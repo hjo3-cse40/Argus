@@ -1,8 +1,6 @@
 # Binaries
 *.exe
 *.exe~
-api
-/backend/api
 
 # Go
 /backend/vendor/
