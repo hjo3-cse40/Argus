@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"time"
 
+	"argus-backend/internal/events"
 	"argus-backend/internal/mq"
 	"argus-backend/internal/store"
 )
@@ -29,26 +29,40 @@ func randomID() string {
 func (h *DebugPublisher) Publish(w http.ResponseWriter, r *http.Request) {
 	eventID := randomID()
 
+	// Create event using the formalized schema
+	event := events.NewEvent(eventID, "synthetic", "hello from argus", "https://example.com")
+
+	// Validate event
+	if err := event.Validate(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":    false,
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Convert to store.Delivery for in-memory tracking
 	d := store.Delivery{
-		EventID: eventID,
-		Source:  "synthetic",
-		Title:   "hello from argus",
-		URL:     "https://example.com",
+		EventID: event.EventID,
+		Source:  event.Source,
+		Title:   event.Title,
+		URL:     event.URL,
 	}
 
 	// Save as queued (in-memory)
 	h.Store.AddQueued(d)
 
-	// Publish to RabbitMQ
-	event := map[string]any{
-		"event_id":   eventID,
-		"source":     d.Source,
-		"title":      d.Title,
-		"url":        d.URL,
-		"created_at": time.Now().UTC().Format(time.RFC3339),
+	// Convert event to JSON and publish to RabbitMQ
+	body, err := event.ToJSON()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":    false,
+			"error": "failed to marshal event",
+		})
+		return
 	}
-
-	body, _ := json.Marshal(event)
 
 	if err := h.MQ.Publish("raw_events", body); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

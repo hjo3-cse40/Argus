@@ -16,3 +16,7 @@
 *.swp
 .DS_Store
 Thumbs.db
+
+# Local scripts
+create_branch.sh
+merge_branch.sh

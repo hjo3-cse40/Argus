@@ -5,23 +5,22 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
+	"argus-backend/internal/config"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
-	amqpURL := os.Getenv("RABBITMQ_URL")
-	if amqpURL == "" {
-		amqpURL = "amqp://argus:argus@localhost:5672/"
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// Where the API is running (for marking delivered)
-	apiBase := os.Getenv("API_BASE_URL")
-	if apiBase == "" {
-		apiBase = "http://localhost:8080"
-	}
+	log.Printf("Starting worker in %s environment", cfg.Environment)
+
+	amqpURL := cfg.RabbitMQ.URL
+	apiBase := cfg.API.BaseURL
 
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
