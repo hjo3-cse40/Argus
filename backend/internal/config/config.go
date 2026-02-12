@@ -20,6 +20,7 @@ type Config struct {
 	RabbitMQ    RabbitMQConfig
 	API         APIConfig
 	Database    DatabaseConfig
+	Destinations DestinationsConfig
 }
 
 type RabbitMQConfig struct {
@@ -40,6 +41,10 @@ type DatabaseConfig struct {
 	User     string
 	Password string
 	DBName   string
+}
+
+type DestinationsConfig struct {
+	DiscordWebhookURL string
 }
 
 func Load() (*Config, error) {
@@ -68,6 +73,9 @@ func Load() (*Config, error) {
 			User:     getEnv("DB_USER", "argus"),
 			Password: getEnv("DB_PASSWORD", "argus"),
 			DBName:   getEnv("DB_NAME", "argus"),
+		},
+		Destinations: DestinationsConfig{
+			DiscordWebhookURL: getEnv("DISCORD_WEBHOOK_URL", ""),
 		},
 	}
 

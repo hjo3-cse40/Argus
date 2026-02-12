@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"argus-backend/internal/config"
+	"argus-backend/internal/events"
+	"argus-backend/internal/notifier"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -22,6 +24,11 @@ func main() {
 	amqpURL := cfg.RabbitMQ.URL
 	apiBase := cfg.API.BaseURL
 
+	discordWebhook := cfg.Destinations.DiscordWebhookURL
+	if discordWebhook == "" {
+		log.Fatal("DISCORD_WEBHOOK_URL not set")
+	}
+
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
 		log.Fatal("dial:", err)
@@ -35,6 +42,17 @@ func main() {
 	defer ch.Close()
 
 	queue := "raw_events"
+	_, err = ch.QueueDeclare(
+    	queue,
+    	true,
+    	false,
+    	false,
+    	false,
+    	nil,
+	)
+	if err != nil {
+    	log.Fatal("queue declare:", err)
+	}
 
 	msgs, err := ch.Consume(
 		queue,
@@ -56,32 +74,45 @@ func main() {
 	for msg := range msgs {
 		log.Printf("RECEIVED raw message: %s", string(msg.Body))
 
-		// Parse JSON to extract event_id
-		var payload map[string]any
-		if err := json.Unmarshal(msg.Body, &payload); err != nil {
-			log.Printf("json unmarshal error: %v", err)
-			// If it's not valid JSON, Ack anyway to avoid getting stuck
+		// parse event
+		ev, err := events.FromJSON(msg.Body)
+		if err != nil {
+			log.Printf("event parse error: %v", err)
 			_ = msg.Ack(false)
 			continue
 		}
 
-		eventID, _ := payload["event_id"].(string)
-		log.Printf("RECEIVED event_id=%s", eventID)
+		// Validate event
+		if err := ev.Validate(); err != nil {
+			log.Printf("event validation error: %v", err)
+			_ = msg.Ack(false)
+			continue
+		}
+
+		log.Printf("RECEIVED event_id=%s", ev.EventID)
+
+		// Send to Discord
+		if err := notifier.SendDiscordWebhook(discordWebhook, ev); err != nil {
+			log.Printf("discord send failed event_id=%s err=%v", ev.EventID, err)
+			_ = msg.Ack(false)
+			continue
+		}
+		
+		log.Printf("discord delivered event_id=%s", ev.EventID)
 
 		// Mark delivered back in API (best-effort)
-		if eventID != "" {
-			body, _ := json.Marshal(map[string]string{"event_id": eventID})
-			req, _ := http.NewRequest("POST", apiBase+"/debug/delivered", bytes.NewReader(body))
-			req.Header.Set("Content-Type", "application/json")
+		body, _ := json.Marshal(map[string]string{"event_id": ev.EventID})
+		req, _ := http.NewRequest("POST", apiBase+"/debug/delivered", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
 
-			resp, err := client.Do(req)
-			if err != nil {
-				log.Printf("mark delivered request error: %v", err)
-			} else {
-				_ = resp.Body.Close()
-				log.Printf("marked delivered in API: status=%s", resp.Status)
-			}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("mark delivered request error: %v", err)
+		} else {
+			_ = resp.Body.Close()
+			log.Printf("marked delivered in API: status=%s", resp.Status)
 		}
+
 
 		// Dummy delivery complete -> Ack message
 		if err := msg.Ack(false); err != nil {

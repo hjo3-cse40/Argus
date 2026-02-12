@@ -170,3 +170,72 @@ See `docs/` for:
 ```bash
 docker compose down
 ```
+
+### 8) Discord Webhook Delivery (Sprint 2)
+
+The worker supports delivering events to a configured Discord webhook using embed formatting.
+
+### Setup Discord Webhook
+
+1. In your discord server:
+  - Go to **Server Settings → Integrations → Webhooks**
+  - Click **New Webhook** for a channel
+  - Copy the generated webhook URL
+
+2. Set the environment variable before running worker.
+
+### MacOS / Linux (Terminal)
+```bash
+export DISCORD_WEBHOOK_URL="generated webhook url"
+```
+### Windows (Terminal)
+```bash
+$env:DISCORD_WEBHOOK_URL="generated webhook url"
+```
+
+### Run Worker
+
+In same terminal:
+```bash
+cd backend
+go run ./cmd/worker
+```
+
+When publishing events, worker will:
+1. consume the event from `raw_events`
+2. Render a discord embed
+3. POST to the configured webhook
+4. Mark the event delivered in the API
+5. ACK the message
+
+### Full End-to-End Test (Discord)
+
+1. Start infra:
+```bash
+cd infra
+docker compose up -d
+```
+2. Run API:
+```bash
+cd backend
+go run ./cmd/api
+```
+3. Setup webhook + run worker (Both in New Terminal):
+```bash
+$env:DISCORD_WEBHOOK_URL="generated webhook url"
+or
+export DISCORD_WEBHOOK_URL="generated webhook url"
+go run ./cmd/worker
+```
+4. Publish event:
+```bash
+go run ./cmd/cli
+```
+5. Expected Results from worker:
+  ```
+  RECEIVED raw message: {...}
+  RECEIVED event_id=...
+  discord delivered event_id=...
+  marked delivered in API: status=200 OK
+  DELIVERED + ACKED
+  ```
