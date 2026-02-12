@@ -171,7 +171,7 @@ See `docs/` for:
 docker compose down
 ```
 
-### 8) Discord Webhook Delivery (Sprint 2)
+## Discord Webhook Delivery (Sprint 2)
 
 The worker supports delivering events to a configured Discord webhook using embed formatting.
 
