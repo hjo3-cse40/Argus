@@ -22,6 +22,15 @@ func NewRouter(mqClient *mq.Client, st *store.MemoryStore) http.Handler {
 	mark := handlers.NewMarkDeliveredHandler(st)
 	mux.HandleFunc("POST /debug/delivered", mark.Mark)
 
+	// Source management endpoints
+	sh := handlers.NewSourcesHandler(st)
+	mux.HandleFunc("POST /api/sources", sh.Create)
+	mux.HandleFunc("GET /api/sources", sh.List)
+
+	// Serve static files for the UI (from parent directory)
+	fs := http.FileServer(http.Dir("../static"))
+	mux.Handle("/", fs)
+
 	return mux
 }
 

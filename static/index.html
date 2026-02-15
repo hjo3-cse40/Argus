@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Argus - Source Registration</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Argus Source Registration</h1>
+        <p>Register notification sources and configure Discord webhooks</p>
+    </header>
+
+    <main>
+        <section class="registration-section">
+            <h2>Register New Source</h2>
+            
+            <!-- Success Message Container -->
+            <div id="success-message" class="message success-message" role="alert" aria-live="polite" hidden>
+                <p id="success-text"></p>
+            </div>
+
+            <!-- Error Message Container -->
+            <div id="error-message" class="message error-message" role="alert" aria-live="assertive" hidden>
+                <p id="error-text"></p>
+            </div>
+
+            <!-- Registration Form -->
+            <form id="registration-form" novalidate>
+                <div class="form-group">
+                    <label for="source-name">
+                        Source Name <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="source-name" 
+                        name="name" 
+                        required 
+                        maxlength="100"
+                        aria-required="true"
+                        aria-describedby="name-error"
+                    >
+                    <span id="name-error" class="field-error" role="alert"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="source-type">
+                        Source Type <span class="required">*</span>
+                    </label>
+                    <select 
+                        id="source-type" 
+                        name="type" 
+                        required
+                        aria-required="true"
+                        aria-describedby="type-error"
+                    >
+                        <option value="">Select a source type</option>
+                        <option value="github">GitHub</option>
+                        <option value="gitlab">GitLab</option>
+                        <option value="generic">Generic</option>
+                    </select>
+                    <span id="type-error" class="field-error" role="alert"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="repository-url">
+                        Repository URL <span class="optional">(optional)</span>
+                    </label>
+                    <input 
+                        type="url" 
+                        id="repository-url" 
+                        name="repository_url"
+                        placeholder="https://github.com/username/repo"
+                        aria-describedby="repo-help"
+                    >
+                    <span id="repo-help" class="field-help">
+                        The GitHub/GitLab repository URL for this source
+                    </span>
+                </div>
+
+                <div class="form-group">
+                    <label for="discord-webhook">
+                        Discord Webhook URL <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="url" 
+                        id="discord-webhook" 
+                        name="discord_webhook" 
+                        required
+                        placeholder="https://discord.com/api/webhooks/..."
+                        aria-required="true"
+                        aria-describedby="webhook-error"
+                    >
+                    <span id="webhook-error" class="field-error" role="alert"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="webhook-secret">
+                        Webhook Secret <span class="optional">(optional)</span>
+                    </label>
+                    <input 
+                        type="password" 
+                        id="webhook-secret" 
+                        name="webhook_secret" 
+                        maxlength="256"
+                        aria-describedby="secret-help"
+                    >
+                    <span id="secret-help" class="field-help">
+                        Optional shared secret for webhook validation
+                    </span>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="submit-button" class="btn btn-primary">
+                        <span class="button-text">Register Source</span>
+                        <span class="loading-spinner" hidden aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="sources-section">
+            <h2>Registered Sources</h2>
+            
+            <!-- Loading Indicator for Source List -->
+            <div id="list-loading" class="loading-container" hidden>
+                <div class="loading-spinner"></div>
+                <p>Loading sources...</p>
+            </div>
+
+            <!-- Empty State Message -->
+            <div id="empty-state" class="empty-state" hidden>
+                <p>No sources have been configured yet.</p>
+                <p>Register your first source using the form above.</p>
+            </div>
+
+            <!-- Source List Container -->
+            <div id="source-list" class="source-list"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Argus Notification Aggregation System</p>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
