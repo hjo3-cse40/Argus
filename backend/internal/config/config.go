@@ -3,7 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Environment string
@@ -48,6 +51,25 @@ type DestinationsConfig struct {
 }
 
 func Load() (*Config, error) {
+	// Load .env from current dir or infra/ so DISCORD_WEBHOOK_URL etc. are set
+	for _, path := range []string{".env", "infra/.env", "../infra/.env"} {
+		if _, err := os.Stat(path); err == nil {
+			_ = godotenv.Load(path)
+			break
+		}
+	}
+	// Also try next to the binary (e.g. when run from backend/cmd/worker)
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		for _, name := range []string{"infra/.env", "../infra/.env", ".env"} {
+			p := filepath.Join(dir, name)
+			if _, err := os.Stat(p); err == nil {
+				_ = godotenv.Load(p)
+				break
+			}
+		}
+	}
+
 	env := getEnv("ENV", string(EnvDev))
 	environment := Environment(env)
 	if environment != EnvDev && environment != EnvStage && environment != EnvProd {

@@ -109,7 +109,7 @@ func markQueued(client *http.Client, apiBaseURL string, event *events.Event) {
 	}
 
 	body, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", apiBaseURL+"/debug/publish", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", apiBaseURL+"/debug/queued", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	// Ignore errors - this is best-effort

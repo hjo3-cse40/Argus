@@ -16,6 +16,9 @@ func NewRouter(mqClient *mq.Client, st *store.MemoryStore) http.Handler {
 	debug := handlers.NewDebugPublisher(mqClient, st)
 	mux.HandleFunc("POST /debug/publish", debug.Publish)
 
+	markQueued := handlers.NewMarkQueuedHandler(st)
+	mux.HandleFunc("POST /debug/queued", markQueued.MarkQueued)
+
 	dh := handlers.NewDeliveriesHandler(st)
 	mux.HandleFunc("GET /deliveries", dh.List)
 
