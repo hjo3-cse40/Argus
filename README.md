@@ -40,7 +40,7 @@ docker compose down
 
 ### 2) Configuration
 
-The application supports environment-based configuration (dev/stage/prod). See `docs/configuration-guide.md` for details.
+Configuration is via **environment variables**. The app treats a **`.env` file as the config file**: it loads `.env`, `infra/.env`, or `../infra/.env` automatically. See `docs/configuration-guide.md` for all options and env-based config (dev/stage/prod).
 
 **Quick start (development):**
 ```bash

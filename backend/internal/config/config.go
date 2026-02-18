@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -109,6 +110,12 @@ func Load() (*Config, error) {
 			cfg.RabbitMQ.Host,
 			cfg.RabbitMQ.Port,
 		)
+	}
+
+	// Validate DISCORD_WEBHOOK_URL format when set (same rule as sources API)
+	if cfg.Destinations.DiscordWebhookURL != "" &&
+		!strings.HasPrefix(cfg.Destinations.DiscordWebhookURL, "https://discord.com/api/webhooks/") {
+		return nil, fmt.Errorf("DISCORD_WEBHOOK_URL must be a valid Discord webhook URL (https://discord.com/api/webhooks/...)")
 	}
 
 	return cfg, nil

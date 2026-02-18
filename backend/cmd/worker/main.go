@@ -28,6 +28,7 @@ func main() {
 	if discordWebhook == "" {
 		log.Fatal("DISCORD_WEBHOOK_URL not set")
 	}
+	log.Printf("✓ Discord webhook URL loaded")
 
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
