@@ -25,7 +25,7 @@ func NewRouter(mqClient *mq.Client, st *store.MemoryStore) http.Handler {
 	mark := handlers.NewMarkDeliveredHandler(st)
 	mux.HandleFunc("POST /debug/delivered", mark.Mark)
 
-	// Ingestion: normalize and enqueue events (Sprint 2 webhook/ingestion endpoint)
+	// Ingestion: normalize and enqueue events
 	ingest := handlers.NewIngestHandler(mqClient, st)
 	mux.HandleFunc("POST /api/ingest", ingest.Ingest)
 
