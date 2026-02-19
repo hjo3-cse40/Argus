@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -18,12 +19,23 @@ const (
 )
 
 type Config struct {
-	Environment Environment
-	Port        string
-	RabbitMQ    RabbitMQConfig
-	API         APIConfig
-	Database    DatabaseConfig
+	Environment  Environment
+	Port         string
+	RabbitMQ     RabbitMQConfig
+	API          APIConfig
+	Database     DatabaseConfig
 	Destinations DestinationsConfig
+	RSSHub       RSSHubConfig
+}
+
+type RSSHubConfig struct {
+	BaseURL string
+	Feeds   []Feed
+}
+
+type Feed struct {
+	SourceType string // e.g. "youtube", "reddit", "x", "github"
+	URL        string // full RSSHub URL
 }
 
 type RabbitMQConfig struct {
@@ -99,6 +111,28 @@ func Load() (*Config, error) {
 		Destinations: DestinationsConfig{
 			DiscordWebhookURL: getEnv("DISCORD_WEBHOOK_URL", ""),
 		},
+		RSSHub: RSSHubConfig{
+			BaseURL: getEnv("RSSHUB_BASE_URL", "http://localhost:1200"),
+		},
+	}
+
+	// Parse comma-separated feeds in "type:path" format
+	// e.g. "youtube:youtube/channel/ABC,reddit:reddit/subreddit/golang"
+	if feeds := getEnv("RSSHUB_FEEDS", ""); feeds != "" {
+		for _, f := range strings.Split(feeds, ",") {
+			f = strings.TrimSpace(f)
+			if f == "" {
+				continue
+			}
+			parts := strings.SplitN(f, ":", 2)
+			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				continue
+			}
+			cfg.RSSHub.Feeds = append(cfg.RSSHub.Feeds, Feed{
+				SourceType: parts[0],
+				URL:        cfg.RSSHub.BaseURL + "/" + parts[1],
+			})
+		}
 	}
 
 	// Build RabbitMQ URL if not provided

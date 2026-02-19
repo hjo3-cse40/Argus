@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"argus-backend/internal/events"
@@ -27,22 +28,34 @@ type discordEmbedFoot struct {
 	Text string `json:"text,omitempty"`
 }
 
-// Converts an Event into a properly formatted Discord webhook payload
 func RenderDiscordEmbed(e *events.Event) discordPayload {
+	sourceType, _ := e.Metadata["source_type"].(string)
+	author, _ := e.Metadata["author"].(string)
+	description, _ := e.Metadata["description"].(string)
 
-	//Build the embed description using event field
-	desc := fmt.Sprintf("**Source:** %s\n**Created:** %s", e.Source, e.CreatedAt.UTC().Format(time.RFC3339))
+	var descParts []string
+	if sourceType != "" {
+		descParts = append(descParts, fmt.Sprintf("**Platform:** %s", sourceType))
+	}
+	descParts = append(descParts, fmt.Sprintf("**Source:** %s", e.Source))
+	if author != "" {
+		descParts = append(descParts, fmt.Sprintf("**Author:** %s", author))
+	}
+	if description != "" {
+		descParts = append(descParts, truncate(description, 300))
+	}
 
-	// Construct and return full discord payload
+	desc := strings.Join(descParts, "\n")
+
 	return discordPayload{
-		Username: "Argus", 
+		Username: "Argus",
 		Embeds: []discordEmbed{
 			{
-				Title:			truncate(e.Title, 256),
-				URL: 			e.URL,
-				Description: 	truncate(desc, 4096),
+				Title:       truncate(e.Title, 256),
+				URL:         e.URL,
+				Description: truncate(desc, 4096),
 				Footer: &discordEmbedFoot{
-					Text: truncate("event_id: " +e.EventID, 2048),
+					Text: truncate("event_id: "+e.EventID, 2048),
 				},
 				Timestamp: e.CreatedAt.UTC().Format(time.RFC3339),
 			},

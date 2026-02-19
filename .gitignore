@@ -1,6 +1,7 @@
 # Binaries
 *.exe
 *.exe~
+/backend/rss
 
 # Go
 /backend/vendor/
@@ -16,6 +17,9 @@
 *.swp
 .DS_Store
 Thumbs.db
+
+# Runtime data
+seen_ids.txt
 
 # Local scripts
 create_branch.sh
