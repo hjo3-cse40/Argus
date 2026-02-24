@@ -25,6 +25,10 @@ func NewRouter(mqClient *mq.Client, st *store.MemoryStore) http.Handler {
 	mark := handlers.NewMarkDeliveredHandler(st)
 	mux.HandleFunc("POST /debug/delivered", mark.Mark)
 
+	// Ingestion: normalize and enqueue events
+	ingest := handlers.NewIngestHandler(mqClient, st)
+	mux.HandleFunc("POST /api/ingest", ingest.Ingest)
+
 	// Source management endpoints
 	sh := handlers.NewSourcesHandler(st)
 	mux.HandleFunc("POST /api/sources", sh.Create)

@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Argus backend now supports environment-based configuration (dev/stage/prod) with a centralized config loading system.
+The Argus backend uses **environment variables** as its configuration. The **config file** is a `.env` file: the app loads variables from `.env`, `infra/.env`, or `../infra/.env` (relative to the working directory or the binary) automatically via `godotenv`, so you can put secrets and overrides in a `.env` file instead of exporting them in the shell.
+
+The app also supports environment-based configuration (dev/stage/prod) with a centralized config loading system.
 
 ## Environment Variables
 
@@ -28,8 +30,11 @@ The application uses the `ENV` environment variable to determine which environme
 | `DB_USER` | Database user | `argus` | No |
 | `DB_PASSWORD` | Database password | `argus` | No |
 | `DB_NAME` | Database name | `argus` | No |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL for notifications (worker) | *(none)* | Yes for worker |
 
 *Either provide `RABBITMQ_URL` or the individual components (HOST, PORT, USER, PASS)
+
+**DISCORD_WEBHOOK_URL** must be a valid Discord webhook URL starting with `https://discord.com/api/webhooks/` when set. The worker fails to start if it is missing or malformed.
 
 ## Usage
 
@@ -42,11 +47,19 @@ export PORT=8080
 export RABBITMQ_URL=amqp://argus:argus@localhost:5672/
 ```
 
-#### Option 2: Use .env file (if using a tool like `godotenv`)
+#### Option 2: Use a .env file (recommended)
+
+The app **loads a `.env` file automatically** (no need to `source` it). Place a `.env` in the project root, in `backend/`, or in `infra/` with your variables, for example:
+
 ```bash
-# Load from .env file
-source .env
+# infra/.env or backend/.env
+ENV=dev
+PORT=8080
+RABBITMQ_URL=amqp://argus:argus@localhost:5672/
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-id/your-token
 ```
+
+Then run the API or worker from a directory where one of those paths exists; config is loaded at startup.
 
 #### Option 3: Inline with command
 ```bash
@@ -108,6 +121,7 @@ port := cfg.Port
 
 The config loader validates:
 - `ENV` must be one of: `dev`, `stage`, or `prod`
+- `DISCORD_WEBHOOK_URL` (when set) must start with `https://discord.com/api/webhooks/`; otherwise `config.Load()` returns an error
 - All other values have sensible defaults
 
 ## Best Practices
