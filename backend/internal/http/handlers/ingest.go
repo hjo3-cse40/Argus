@@ -15,11 +15,11 @@ import (
 // IngestHandler accepts normalized event payloads, validates them, publishes to RabbitMQ, and records as queued.
 type IngestHandler struct {
 	MQ    *mq.Client
-	Store *store.MemoryStore
+	Store store.Store
 }
 
 // NewIngestHandler returns a new IngestHandler.
-func NewIngestHandler(mqClient *mq.Client, st *store.MemoryStore) *IngestHandler {
+func NewIngestHandler(mqClient *mq.Client, st store.Store) *IngestHandler {
 	return &IngestHandler{MQ: mqClient, Store: st}
 }
 
@@ -86,11 +86,18 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract subsource_id from event metadata if present
+	var subsourceID *string
+	if sid, ok := ev.Metadata["subsource_id"].(string); ok && sid != "" {
+		subsourceID = &sid
+	}
+
 	h.Store.AddQueued(store.Delivery{
-		EventID: ev.EventID,
-		Source:  ev.Source,
-		Title:   ev.Title,
-		URL:     ev.URL,
+		EventID:     ev.EventID,
+		Source:      ev.Source,
+		Title:       ev.Title,
+		URL:         ev.URL,
+		SubsourceID: subsourceID,
 	})
 
 	w.Header().Set("Content-Type", "application/json")

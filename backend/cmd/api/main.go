@@ -28,7 +28,16 @@ func main() {
 	if err := mqClient.DeclareQueue("raw_events"); err != nil {
 		log.Fatal(err)
 	}
-	st := store.NewMemoryStore(50)
+	
+	// Initialize PostgreSQL store
+	st, err := store.NewPostgresStore(cfg.Database.ConnectionString(), cfg.DeliveryLimit)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer st.Close()
+	
+	log.Printf("Connected to PostgreSQL database at %s:%s", cfg.Database.Host, cfg.Database.Port)
+	
 	handler := apphttp.NewRouter(mqClient, st)
 
 	srv := &http.Server{

@@ -4,6 +4,7 @@ import (
 	"argus-backend/internal/config"
 	"argus-backend/internal/events"
 	"argus-backend/internal/mq"
+	"argus-backend/internal/store"
 	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
@@ -43,6 +44,15 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	// Connect to database to load subsources
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.DBName)
+	st, err := store.NewPostgresStore(connStr, 1000)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer st.Close()
+
 	mqClient, err := mq.Connect(cfg.RabbitMQ.URL)
 	if err != nil {
 		log.Fatalf("failed to connect to RabbitMQ: %v", err)
@@ -53,11 +63,13 @@ func main() {
 		log.Fatalf("failed to declare queue: %v", err)
 	}
 
-	feeds := cfg.RSSHub.Feeds
-	if len(feeds) == 0 {
-		log.Fatal("no feeds configured — set RSSHUB_FEEDS (e.g. \"youtube:youtube/channel/ABC123,reddit:reddit/subreddit/golang\")")
+	// Load subsources from database
+	subsources, err := loadSubsources(st)
+	if err != nil {
+		log.Fatalf("failed to load subsources: %v", err)
 	}
-	log.Printf("Polling %d feed(s)", len(feeds))
+
+	log.Printf("Polling %d subsource(s)", len(subsources))
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -71,7 +83,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	for {
-		processFeeds(client, feeds, mqClient, seenIDs)
+		processFeeds(client, subsources, cfg.RSSHub.BaseURL, mqClient, seenIDs)
 		saveSeenIDs(seenIDs)
 
 		select {
@@ -83,7 +95,129 @@ func main() {
 	}
 }
 
-func processFeeds(client *http.Client, feeds []config.Feed, mqClient *mq.Client, seenIDs map[string]map[string]bool) {
+// loadSubsources queries the database for all active subsources with platform information
+func loadSubsources(st store.Store) ([]store.SubsourceWithPlatform, error) {
+	subsources := st.ListAllSubsources()
+	if len(subsources) == 0 {
+		return nil, fmt.Errorf("no subsources configured in database")
+	}
+	
+	for _, s := range subsources {
+		log.Printf("Loaded subsource: %s - %s (identifier: %s)", s.PlatformName, s.Name, s.Identifier)
+	}
+	
+	return subsources, nil
+}
+
+// constructRSSHubURL constructs the full RSSHub URL from platform name and identifier
+func constructRSSHubURL(baseURL, platformName, identifier string) string {
+	var path string
+	switch platformName {
+	case "youtube":
+		path = fmt.Sprintf("youtube/channel/%s", identifier)
+	case "reddit":
+		path = fmt.Sprintf("reddit/subreddit/%s", identifier)
+	case "x":
+		path = fmt.Sprintf("twitter/user/%s", identifier)
+	default:
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", baseURL, path)
+}
+
+func processFeeds(client *http.Client, subsources []store.SubsourceWithPlatform, baseURL string, mqClient *mq.Client, seenIDs map[string]map[string]bool) {
+	for _, subsource := range subsources {
+		feedURL := constructRSSHubURL(baseURL, subsource.PlatformName, subsource.Identifier)
+		if feedURL == "" {
+			log.Printf("[%s] unsupported platform: %s", subsource.Name, subsource.PlatformName)
+			continue
+		}
+
+		log.Printf("[%s - %s] Fetching: %s", subsource.PlatformName, subsource.Name, feedURL)
+
+		resp, err := client.Get(feedURL)
+		if err != nil {
+			log.Printf("[%s - %s] request failed: %v", subsource.PlatformName, subsource.Name, err)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("[%s - %s] bad status: %s", subsource.PlatformName, subsource.Name, resp.Status)
+			resp.Body.Close()
+			continue
+		}
+
+		var rss RSS
+		if err := xml.NewDecoder(resp.Body).Decode(&rss); err != nil {
+			log.Printf("[%s - %s] xml decode error: %v", subsource.PlatformName, subsource.Name, err)
+			resp.Body.Close()
+			continue
+		}
+		resp.Body.Close()
+
+		log.Printf("[%s - %s] %s — %d items", subsource.PlatformName, subsource.Name, rss.Channel.Title, len(rss.Channel.Items))
+
+		if len(rss.Channel.Items) == 0 {
+			continue
+		}
+
+		// Initialize seen IDs map for this subsource
+		if seenIDs[subsource.ID] == nil {
+			seenIDs[subsource.ID] = make(map[string]bool)
+		}
+
+		items := rss.Channel.Items
+		if len(items) > 5 {
+			items = items[:5]
+		}
+
+		for _, item := range items {
+			eventID := generateDeterministicID(item.Link)
+
+			// Check if we've seen this event for this subsource
+			if seenIDs[subsource.ID][eventID] {
+				continue
+			}
+
+			// Create event with hierarchical metadata
+			event := events.NewEvent(eventID, subsource.Name, item.Title, item.Link)
+			event.Metadata["subsource_id"] = subsource.ID
+			event.Metadata["platform_name"] = subsource.PlatformName
+			event.Metadata["subsource_name"] = subsource.Name
+			event.Metadata["source_type"] = subsource.PlatformName
+			if item.Description != "" {
+				event.Metadata["description"] = item.Description
+			}
+			if item.Author != "" {
+				event.Metadata["author"] = item.Author
+			}
+			if item.PubDate != "" {
+				event.Metadata["pub_date"] = item.PubDate
+			}
+
+			if err := event.Validate(); err != nil {
+				log.Printf("[%s - %s] invalid event: %v", subsource.PlatformName, subsource.Name, err)
+				continue
+			}
+
+			body, err := event.ToJSON()
+			if err != nil {
+				log.Printf("[%s - %s] marshal failed: %v", subsource.PlatformName, subsource.Name, err)
+				continue
+			}
+
+			if err := mqClient.Publish("raw_events", body); err != nil {
+				log.Printf("[%s - %s] publish failed: %v", subsource.PlatformName, subsource.Name, err)
+				continue
+			}
+
+			log.Printf("✓ [%s - %s] %s — %s", subsource.PlatformName, subsource.Name, rss.Channel.Title, item.Title)
+			seenIDs[subsource.ID][eventID] = true
+		}
+	}
+}
+
+func processFeeds_DEPRECATED(client *http.Client, feeds []config.Feed, mqClient *mq.Client, seenIDs map[string]map[string]bool) {
 	for _, feed := range feeds {
 		log.Printf("[%s] Fetching: %s", feed.SourceType, feed.URL)
 
@@ -169,7 +303,7 @@ func generateDeterministicID(input string) string {
 }
 
 // loadSeenIDs reads the persisted seen IDs from disk.
-// File format: one "feedURL\teventID" per line.
+// File format: one "subsourceID\teventID" per line.
 func loadSeenIDs() map[string]map[string]bool {
 	seen := make(map[string]map[string]bool)
 	f, err := os.Open(seenIDsFile)
@@ -184,13 +318,13 @@ func loadSeenIDs() map[string]map[string]bool {
 		if len(parts) != 2 {
 			continue
 		}
-		feedURL, eventID := parts[0], parts[1]
-		if seen[feedURL] == nil {
-			seen[feedURL] = make(map[string]bool)
+		subsourceID, eventID := parts[0], parts[1]
+		if seen[subsourceID] == nil {
+			seen[subsourceID] = make(map[string]bool)
 		}
-		seen[feedURL][eventID] = true
+		seen[subsourceID][eventID] = true
 	}
-	log.Printf("Loaded %d feed(s) from %s", len(seen), seenIDsFile)
+	log.Printf("Loaded %d subsource(s) from %s", len(seen), seenIDsFile)
 	return seen
 }
 
@@ -203,9 +337,9 @@ func saveSeenIDs(seenIDs map[string]map[string]bool) {
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
-	for feedURL, ids := range seenIDs {
+	for subsourceID, ids := range seenIDs {
 		for id := range ids {
-			fmt.Fprintf(w, "%s\t%s\n", feedURL, id)
+			fmt.Fprintf(w, "%s\t%s\n", subsourceID, id)
 		}
 	}
 	w.Flush()

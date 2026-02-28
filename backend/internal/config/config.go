@@ -19,13 +19,14 @@ const (
 )
 
 type Config struct {
-	Environment  Environment
-	Port         string
-	RabbitMQ     RabbitMQConfig
-	API          APIConfig
-	Database     DatabaseConfig
-	Destinations DestinationsConfig
-	RSSHub       RSSHubConfig
+	Environment   Environment
+	Port          string
+	RabbitMQ      RabbitMQConfig
+	API           APIConfig
+	Database      DatabaseConfig
+	Destinations  DestinationsConfig
+	RSSHub        RSSHubConfig
+	DeliveryLimit int
 }
 
 type RSSHubConfig struct {
@@ -56,6 +57,12 @@ type DatabaseConfig struct {
 	User     string
 	Password string
 	DBName   string
+}
+
+// ConnectionString returns the PostgreSQL connection string
+func (d *DatabaseConfig) ConnectionString() string {
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		d.Host, d.Port, d.User, d.Password, d.DBName)
 }
 
 type DestinationsConfig struct {
@@ -114,6 +121,7 @@ func Load() (*Config, error) {
 		RSSHub: RSSHubConfig{
 			BaseURL: getEnv("RSSHUB_BASE_URL", "http://localhost:1200"),
 		},
+		DeliveryLimit: getEnvInt("DELIVERY_LIMIT", 1000),
 	}
 
 	// Parse comma-separated feeds in "type:path" format
