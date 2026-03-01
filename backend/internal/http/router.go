@@ -28,6 +28,9 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 	mark := handlers.NewMarkDeliveredHandler(st)
 	mux.HandleFunc("POST /debug/delivered", mark.Mark)
 
+	markFailed := handlers.NewMarkFailedHandler(st)
+	mux.HandleFunc("POST /debug/failed", markFailed.Mark)
+
 	// Ingestion: normalize and enqueue events
 	ingest := handlers.NewIngestHandler(mqClient, st)
 	mux.HandleFunc("POST /api/ingest", ingest.Ingest)
