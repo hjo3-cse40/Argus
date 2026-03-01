@@ -3,9 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"argus-backend/internal/store"
 )
+
+const defaultDeliveryLimit = 50
+const maxDeliveryLimit = 100
 
 type DeliveriesHandler struct {
 	Store store.Store
@@ -17,23 +21,47 @@ func NewDeliveriesHandler(st store.Store) *DeliveriesHandler {
 
 func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	// Check for filtering query parameters
 	subsourceID := r.URL.Query().Get("subsource_id")
 	platformID := r.URL.Query().Get("platform_id")
-	
+	statusFilter := r.URL.Query().Get("status") // for US 3.8: filter by status
+
+	limit := defaultDeliveryLimit
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+			if n > maxDeliveryLimit {
+				n = maxDeliveryLimit
+			}
+			limit = n
+		}
+	}
+
 	var deliveries []store.Delivery
-	
+
 	if subsourceID != "" {
-		// Filter by subsource_id
 		deliveries = h.Store.ListDeliveriesBySubsource(subsourceID)
 	} else if platformID != "" {
-		// Filter by platform_id
 		deliveries = h.Store.ListDeliveriesByPlatform(platformID)
 	} else {
-		// No filter, return all
 		deliveries = h.Store.List()
 	}
-	
+
+	// Filter by status if requested (US 3.8)
+	if statusFilter != "" {
+		filtered := make([]store.Delivery, 0, len(deliveries))
+		for _, d := range deliveries {
+			if string(d.Status) == statusFilter {
+				filtered = append(filtered, d)
+			}
+		}
+		deliveries = filtered
+	}
+
+	// Apply limit (last N = first N when list is already ordered by created_at DESC)
+	if len(deliveries) > limit {
+		deliveries = deliveries[:limit]
+	}
+
 	_ = json.NewEncoder(w).Encode(deliveries)
 }

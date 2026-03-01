@@ -8,10 +8,10 @@ import (
 )
 
 type MarkFailedHandler struct {
-	Store *store.MemoryStore
+	Store store.Store
 }
 
-func NewMarkFailedHandler(st *store.MemoryStore) *MarkFailedHandler {
+func NewMarkFailedHandler(st store.Store) *MarkFailedHandler {
 	return &MarkFailedHandler{Store: st}
 }
 

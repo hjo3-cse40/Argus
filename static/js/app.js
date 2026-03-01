@@ -51,6 +51,12 @@ const confirmMessage = document.getElementById('confirm-message');
 const confirmOkBtn = document.getElementById('confirm-ok-btn');
 const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
+// DOM Elements - Notification History (US 3.7)
+const historyLoading = document.getElementById('history-loading');
+const historyEmpty = document.getElementById('history-empty');
+const historyContainer = document.getElementById('history-container');
+const historyTbody = document.getElementById('history-tbody');
+
 // State
 let currentPlatforms = [];
 let currentSubsources = [];
@@ -133,6 +139,62 @@ function setupEventListeners() {
 async function loadData() {
     await loadPlatforms();
     await loadSubsources();
+    await loadNotificationHistory();
+}
+
+// ===== NOTIFICATION HISTORY (US 3.7) =====
+
+async function loadNotificationHistory() {
+    if (!historyLoading || !historyEmpty || !historyContainer || !historyTbody) return;
+    historyLoading.hidden = false;
+    historyEmpty.hidden = true;
+    historyContainer.hidden = true;
+    historyTbody.innerHTML = '';
+
+    try {
+        const deliveries = await fetchDeliveries(50);
+        renderNotificationHistory(deliveries);
+    } catch (error) {
+        console.error('Failed to load notification history:', error);
+        historyLoading.hidden = true;
+        historyEmpty.hidden = false;
+    }
+}
+
+async function fetchDeliveries(limit = 50) {
+    const url = limit ? `/deliveries?limit=${limit}` : '/deliveries';
+    const response = await fetchWithTimeout(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch deliveries: ${response.status}`);
+    }
+    return await response.json();
+}
+
+function renderNotificationHistory(deliveries) {
+    historyLoading.hidden = true;
+    if (!deliveries || deliveries.length === 0) {
+        historyEmpty.hidden = false;
+        historyContainer.hidden = true;
+        return;
+    }
+    historyEmpty.hidden = true;
+    historyContainer.hidden = false;
+    historyTbody.innerHTML = deliveries.map(d => {
+        const source = escapeHtml(d.source || '—');
+        const destination = 'Discord';
+        const statusClass = d.status === 'delivered' ? 'status-delivered' : d.status === 'failed' ? 'status-failed' : 'status-queued';
+        const statusLabel = d.status === 'delivered' ? 'Success' : d.status === 'failed' ? 'Failed' : 'Pending';
+        const timestamp = d.updated_at ? new Date(d.updated_at).toLocaleString() : new Date(d.created_at).toLocaleString();
+        return `<tr>
+            <td>${source}</td>
+            <td>${escapeHtml(destination)}</td>
+            <td><span class="${statusClass}">${escapeHtml(statusLabel)}</span></td>
+            <td>${escapeHtml(timestamp)}</td>
+        </tr>`;
+    }).join('');
 }
 
 // ===== PLATFORM FUNCTIONS =====

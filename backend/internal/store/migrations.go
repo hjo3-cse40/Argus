@@ -18,6 +18,12 @@ var migrations = []string{
 		updated_at TIMESTAMPTZ NOT NULL
 	)`,
 
+	// Allow 'failed' status (recreate check constraint)
+	`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_status_check`,
+	`ALTER TABLE deliveries ADD CONSTRAINT deliveries_status_check CHECK (status IN ('queued', 'delivered', 'failed'))`,
+	`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS retry_count INT NOT NULL DEFAULT 0`,
+	`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS last_error TEXT`,
+
 	// Create index on deliveries.status for efficient status-based queries
 	`CREATE INDEX IF NOT EXISTS idx_deliveries_status ON deliveries(status)`,
 

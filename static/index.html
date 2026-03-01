@@ -71,6 +71,41 @@
             <!-- Subsources List (Grouped by Platform) -->
             <div id="subsources-list" class="subsources-list"></div>
         </section>
+
+        <!-- Notification History Section (US 3.7) -->
+        <section class="history-section">
+            <div class="section-header">
+                <h2>Notification History</h2>
+                <p class="section-description">Last 50 notifications (source, destination, status, timestamp)</p>
+            </div>
+
+            <!-- Loading Indicator for History -->
+            <div id="history-loading" class="loading-container" hidden>
+                <div class="loading-spinner"></div>
+                <p>Loading notification history...</p>
+            </div>
+
+            <!-- Empty State for History -->
+            <div id="history-empty" class="empty-state" hidden>
+                <p>No notifications yet.</p>
+                <p>Events will appear here after they are delivered or fail.</p>
+            </div>
+
+            <!-- History Table -->
+            <div id="history-container" class="history-container" hidden>
+                <table class="history-table" aria-label="Notification history">
+                    <thead>
+                        <tr>
+                            <th scope="col">Source</th>
+                            <th scope="col">Destination</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody"></tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
     <!-- Platform Creation Modal -->

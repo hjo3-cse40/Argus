@@ -5,6 +5,7 @@ type Store interface {
 	// Delivery operations
 	AddQueued(d Delivery)
 	MarkDelivered(eventID string) bool
+	MarkFailed(eventID string, retryCount int, lastErr string) bool
 	List() []Delivery
 	ListDeliveriesBySubsource(subsourceID string) []Delivery
 	ListDeliveriesByPlatform(platformID string) []Delivery

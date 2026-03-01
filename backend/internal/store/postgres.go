@@ -136,6 +136,24 @@ func (s *PostgresStore) MarkDelivered(eventID string) bool {
 	return rows > 0
 }
 
+// MarkFailed updates a delivery's status to 'failed' and sets retry_count and last_error
+func (s *PostgresStore) MarkFailed(eventID string, retryCount int, lastErr string) bool {
+	result, err := s.db.Exec(`
+		UPDATE deliveries
+		SET status = $1, updated_at = $2, retry_count = $4, last_error = $5
+		WHERE event_id = $3
+	`, StatusFailed, time.Now().UTC(), eventID, retryCount, lastErr)
+	if err != nil {
+		log.Printf("Failed to mark delivery as failed: %v", err)
+		return false
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false
+	}
+	return rows > 0
+}
+
 // List returns all deliveries ordered by created_at descending, limited by the store's limit
 func (s *PostgresStore) List() []Delivery {
 	rows, err := s.db.Query(`
