@@ -216,10 +216,45 @@ section {
     margin-bottom: 0.5rem;
 }
 
-/* Notification History (US 3.7) */
+/* Notification History (US 3.7, filter US 3.8) */
 .history-section .section-header {
     flex-wrap: wrap;
     gap: 0.5rem;
+}
+
+.history-section .section-header > div:first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-filter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.history-filter-label {
+    font-size: 0.9rem;
+    color: #495057;
+    font-weight: 500;
+}
+
+.history-status-filter {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.history-status-filter:hover,
+.history-status-filter:focus {
+    border-color: #007bff;
+    outline: none;
 }
 
 .section-description {

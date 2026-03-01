@@ -51,11 +51,12 @@ const confirmMessage = document.getElementById('confirm-message');
 const confirmOkBtn = document.getElementById('confirm-ok-btn');
 const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
-// DOM Elements - Notification History (US 3.7)
+// DOM Elements - Notification History (US 3.7, filter US 3.8)
 const historyLoading = document.getElementById('history-loading');
 const historyEmpty = document.getElementById('history-empty');
 const historyContainer = document.getElementById('history-container');
 const historyTbody = document.getElementById('history-tbody');
+const historyStatusFilter = document.getElementById('history-status-filter');
 
 // State
 let currentPlatforms = [];
@@ -133,6 +134,11 @@ function setupEventListeners() {
     confirmModal.addEventListener('click', (e) => {
         if (e.target === confirmModal) closeConfirmModal();
     });
+
+    // Notification history filter by status (US 3.8)
+    if (historyStatusFilter) {
+        historyStatusFilter.addEventListener('change', () => loadNotificationHistory());
+    }
 }
 
 // Load All Data
@@ -146,13 +152,14 @@ async function loadData() {
 
 async function loadNotificationHistory() {
     if (!historyLoading || !historyEmpty || !historyContainer || !historyTbody) return;
+    const statusFilter = historyStatusFilter ? historyStatusFilter.value : '';
     historyLoading.hidden = false;
     historyEmpty.hidden = true;
     historyContainer.hidden = true;
     historyTbody.innerHTML = '';
 
     try {
-        const deliveries = await fetchDeliveries(50);
+        const deliveries = await fetchDeliveries(50, statusFilter);
         renderNotificationHistory(deliveries);
     } catch (error) {
         console.error('Failed to load notification history:', error);
@@ -161,11 +168,18 @@ async function loadNotificationHistory() {
     }
 }
 
-async function fetchDeliveries(limit = 50) {
-    const url = limit ? `/deliveries?limit=${limit}` : '/deliveries';
+async function fetchDeliveries(limit = 50, status = '') {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    const statusVal = String(status).trim();
+    if (statusVal) {
+        params.set('status', statusVal);
+    }
+    const url = '/deliveries' + (params.toString() ? '?' + params.toString() : '');
     const response = await fetchWithTimeout(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
     });
     if (!response.ok) {
         throw new Error(`Failed to fetch deliveries: ${response.status}`);
@@ -178,6 +192,12 @@ function renderNotificationHistory(deliveries) {
     if (!deliveries || deliveries.length === 0) {
         historyEmpty.hidden = false;
         historyContainer.hidden = true;
+        const firstP = historyEmpty.querySelector('p');
+        if (firstP) {
+            firstP.textContent = historyStatusFilter && historyStatusFilter.value
+                ? `No notifications with status "${historyStatusFilter.selectedOptions[0]?.text || historyStatusFilter.value}".`
+                : 'No notifications yet.';
+        }
         return;
     }
     historyEmpty.hidden = true;

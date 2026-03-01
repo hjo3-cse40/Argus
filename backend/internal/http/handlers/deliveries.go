@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"argus-backend/internal/store"
 )
@@ -25,7 +26,7 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	// Check for filtering query parameters
 	subsourceID := r.URL.Query().Get("subsource_id")
 	platformID := r.URL.Query().Get("platform_id")
-	statusFilter := r.URL.Query().Get("status") // for US 3.8: filter by status
+	statusFilter := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("status"))) // US 3.8
 
 	limit := defaultDeliveryLimit
 	if l := r.URL.Query().Get("limit"); l != "" {
@@ -48,10 +49,10 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Filter by status if requested (US 3.8)
-	if statusFilter != "" {
+	if statusFilter != "" && (statusFilter == "delivered" || statusFilter == "failed" || statusFilter == "queued") {
 		filtered := make([]store.Delivery, 0, len(deliveries))
 		for _, d := range deliveries {
-			if string(d.Status) == statusFilter {
+			if strings.EqualFold(string(d.Status), statusFilter) {
 				filtered = append(filtered, d)
 			}
 		}

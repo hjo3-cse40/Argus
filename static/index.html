@@ -72,11 +72,22 @@
             <div id="subsources-list" class="subsources-list"></div>
         </section>
 
-        <!-- Notification History Section (US 3.7) -->
+        <!-- Notification History Section (US 3.7, filter US 3.8) -->
         <section class="history-section">
             <div class="section-header">
-                <h2>Notification History</h2>
-                <p class="section-description">Last 50 notifications (source, destination, status, timestamp)</p>
+                <div>
+                    <h2>Notification History</h2>
+                    <p class="section-description">Last 50 notifications (source, destination, status, timestamp)</p>
+                </div>
+                <div class="history-filter-wrap">
+                    <label for="history-status-filter" class="history-filter-label">Filter by status</label>
+                    <select id="history-status-filter" class="history-status-filter" aria-label="Filter notification history by status">
+                        <option value="">All</option>
+                        <option value="delivered">Success</option>
+                        <option value="failed">Failed</option>
+                        <option value="queued">Pending</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Loading Indicator for History -->
