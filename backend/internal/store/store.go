@@ -12,6 +12,7 @@ type DeliveryStatus string
 const (
 	StatusQueued    DeliveryStatus = "queued"
 	StatusDelivered DeliveryStatus = "delivered"
+	StatusFailed    DeliveryStatus = "failed"
 )
 
 type Delivery struct {
@@ -22,6 +23,8 @@ type Delivery struct {
 	Status     DeliveryStatus `json:"status"`
 	CreatedAt  time.Time     `json:"created_at"`
 	UpdatedAt  time.Time     `json:"updated_at"`
+	RetryCount int			 `json:"retry_count"`
+	LastError  string		 `json:"last_error,omitempty"`
 }
 
 type Source struct {
@@ -136,4 +139,21 @@ func (s *MemoryStore) GetSourceByName(name string) (Source, bool) {
 		}
 	}
 	return Source{}, false
+}
+
+// MarkFailed records failure
+func (s *MemoryStore) MarkFailed(eventID string, retryCount int, lastErr string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.deliveries {
+		if s.deliveries[i].EventID == eventID {
+			s.deliveries[i].Status = StatusFailed
+			s.deliveries[i].RetryCount = retryCount
+			s.deliveries[i].LastError = lastErr
+			s.deliveries[i].UpdatedAt = time.Now().UTC()
+			return true
+		}
+	}
+	return false
 }
