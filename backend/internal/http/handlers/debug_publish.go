@@ -13,10 +13,10 @@ import (
 
 type DebugPublisher struct {
 	MQ    *mq.Client
-	Store *store.MemoryStore
+	Store store.Store
 }
 
-func NewDebugPublisher(mqClient *mq.Client, st *store.MemoryStore) *DebugPublisher {
+func NewDebugPublisher(mqClient *mq.Client, st store.Store) *DebugPublisher {
 	return &DebugPublisher{MQ: mqClient, Store: st}
 }
 

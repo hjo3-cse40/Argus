@@ -10,10 +10,10 @@ import (
 // MarkQueuedHandler records an event as queued in the store only (no MQ publish).
 // Used by the CLI after it has already published to RabbitMQ.
 type MarkQueuedHandler struct {
-	Store *store.MemoryStore
+	Store store.Store
 }
 
-func NewMarkQueuedHandler(st *store.MemoryStore) *MarkQueuedHandler {
+func NewMarkQueuedHandler(st store.Store) *MarkQueuedHandler {
 	return &MarkQueuedHandler{Store: st}
 }
 

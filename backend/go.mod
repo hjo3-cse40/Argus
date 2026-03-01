@@ -8,3 +8,5 @@ require (
 	github.com/leanovate/gopter v0.2.11
 	github.com/rabbitmq/amqp091-go v1.10.0
 )
+
+require github.com/lib/pq v1.11.2

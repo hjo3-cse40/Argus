@@ -9,10 +9,10 @@ import (
 )
 
 type SourcesHandler struct {
-	Store *store.MemoryStore
+	Store store.Store
 }
 
-func NewSourcesHandler(st *store.MemoryStore) *SourcesHandler {
+func NewSourcesHandler(st store.Store) *SourcesHandler {
 	return &SourcesHandler{Store: st}
 }
 

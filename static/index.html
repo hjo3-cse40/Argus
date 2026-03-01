@@ -3,147 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Argus - Source Registration</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>Argus - Hierarchical Source Management</title>
+    <link rel="stylesheet" href="/css/styles.css?v=6">
 </head>
 <body>
     <header>
-        <h1>Argus Source Registration</h1>
-        <p>Register notification sources and configure Discord webhooks</p>
+        <h1>Argus Source Management</h1>
+        <p>Manage platforms and subsources for notification aggregation</p>
     </header>
 
     <main>
-        <section class="registration-section">
-            <h2>Register New Source</h2>
-            
-            <!-- Success Message Container -->
-            <div id="success-message" class="message success-message" role="alert" aria-live="polite" hidden>
-                <p id="success-text"></p>
+        <!-- Success Message Container -->
+        <div id="success-message" class="message success-message" role="alert" aria-live="polite" hidden>
+            <p id="success-text"></p>
+            <button id="success-close" class="message-close" aria-label="Close success message">&times;</button>
+        </div>
+
+        <!-- Error Message Container -->
+        <div id="error-message" class="message error-message" role="alert" aria-live="assertive" hidden>
+            <p id="error-text"></p>
+            <button id="error-close" class="message-close" aria-label="Close error message">&times;</button>
+        </div>
+
+        <!-- Platforms Section -->
+        <section class="platforms-section">
+            <div class="section-header">
+                <h2>Platforms</h2>
+                <button id="add-platform-btn" class="btn btn-primary" aria-label="Add new platform">
+                    Add Platform
+                </button>
             </div>
 
-            <!-- Error Message Container -->
-            <div id="error-message" class="message error-message" role="alert" aria-live="assertive" hidden>
-                <p id="error-text"></p>
+            <!-- Loading Indicator for Platforms -->
+            <div id="platforms-loading" class="loading-container" hidden>
+                <div class="loading-spinner"></div>
+                <p>Loading platforms...</p>
             </div>
 
-            <!-- Registration Form -->
-            <form id="registration-form" novalidate>
-                <div class="form-group">
-                    <label for="source-name">
-                        Source Name <span class="required">*</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="source-name" 
-                        name="name" 
-                        required 
-                        maxlength="100"
-                        aria-required="true"
-                        aria-describedby="name-error"
-                    >
-                    <span id="name-error" class="field-error" role="alert"></span>
-                </div>
+            <!-- Empty State for Platforms -->
+            <div id="platforms-empty" class="empty-state" hidden>
+                <p>No platforms configured yet.</p>
+                <p>Add your first platform to get started.</p>
+            </div>
 
+            <!-- Platforms List -->
+            <div id="platforms-list" class="platforms-list"></div>
+        </section>
+
+        <!-- Subsources Section -->
+        <section class="subsources-section">
+            <div class="section-header">
+                <h2>Subsources</h2>
+            </div>
+
+            <!-- Loading Indicator for Subsources -->
+            <div id="subsources-loading" class="loading-container" hidden>
+                <div class="loading-spinner"></div>
+                <p>Loading subsources...</p>
+            </div>
+
+            <!-- Empty State for Subsources -->
+            <div id="subsources-empty" class="empty-state" hidden>
+                <p>No subsources configured yet.</p>
+                <p>Create platforms first, then add subsources to them.</p>
+            </div>
+
+            <!-- Subsources List (Grouped by Platform) -->
+            <div id="subsources-list" class="subsources-list"></div>
+        </section>
+    </main>
+
+    <!-- Platform Creation Modal -->
+    <div id="platform-modal" class="modal" hidden role="dialog" aria-labelledby="platform-modal-title" aria-modal="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="platform-modal-title">Add Platform</h3>
+                <button id="platform-modal-close" class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <form id="platform-form" novalidate>
                 <div class="form-group">
-                    <label for="source-type">
-                        Source Type <span class="required">*</span>
+                    <label for="platform-name">
+                        Platform <span class="required">*</span>
                     </label>
                     <select 
-                        id="source-type" 
-                        name="type" 
+                        id="platform-name" 
+                        name="name" 
                         required
                         aria-required="true"
-                        aria-describedby="type-error"
+                        aria-describedby="platform-name-error"
                     >
-                        <option value="">Select a source type</option>
-                        <option value="github">GitHub</option>
-                        <option value="gitlab">GitLab</option>
-                        <option value="generic">Generic</option>
+                        <option value="">Select a platform</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="reddit">Reddit</option>
+                        <option value="x">X (Twitter)</option>
                     </select>
-                    <span id="type-error" class="field-error" role="alert"></span>
+                    <span id="platform-name-error" class="field-error" role="alert"></span>
                 </div>
 
                 <div class="form-group">
-                    <label for="repository-url">
-                        Repository URL <span class="optional">(optional)</span>
-                    </label>
-                    <input 
-                        type="url" 
-                        id="repository-url" 
-                        name="repository_url"
-                        placeholder="https://github.com/username/repo"
-                        aria-describedby="repo-help"
-                    >
-                    <span id="repo-help" class="field-help">
-                        The GitHub/GitLab repository URL for this source
-                    </span>
-                </div>
-
-                <div class="form-group">
-                    <label for="discord-webhook">
+                    <label for="platform-webhook">
                         Discord Webhook URL <span class="required">*</span>
                     </label>
                     <input 
                         type="url" 
-                        id="discord-webhook" 
+                        id="platform-webhook" 
                         name="discord_webhook" 
                         required
-                        placeholder="https://discord.com/api/webhooks/..."
+                        placeholder="https://discord.com/api/webhooks/... or https://discordapp.com/api/webhooks/..."
                         aria-required="true"
-                        aria-describedby="webhook-error"
+                        aria-describedby="platform-webhook-error platform-webhook-help"
+                        autocomplete="url"
                     >
-                    <span id="webhook-error" class="field-error" role="alert"></span>
+                    <span id="platform-webhook-help" class="field-help">
+                        Discord webhook URL for notifications from this platform
+                    </span>
+                    <span id="platform-webhook-error" class="field-error" role="alert"></span>
                 </div>
 
                 <div class="form-group">
-                    <label for="webhook-secret">
+                    <label for="platform-secret">
                         Webhook Secret <span class="optional">(optional)</span>
                     </label>
                     <input 
                         type="password" 
-                        id="webhook-secret" 
+                        id="platform-secret" 
                         name="webhook_secret" 
-                        maxlength="256"
-                        aria-describedby="secret-help"
+                        placeholder="Optional webhook secret"
+                        aria-describedby="platform-secret-help"
+                        autocomplete="new-password"
                     >
-                    <span id="secret-help" class="field-help">
-                        Optional shared secret for webhook validation
+                    <span id="platform-secret-help" class="field-help">
+                        Optional secret for webhook verification
                     </span>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" id="submit-button" class="btn btn-primary">
-                        <span class="button-text">Register Source</span>
+                    <button type="button" id="platform-cancel-btn" class="btn btn-secondary">
+                        Cancel
+                    </button>
+                    <button type="submit" id="platform-submit-btn" class="btn btn-primary">
+                        <span class="button-text">Create Platform</span>
                         <span class="loading-spinner" hidden aria-hidden="true"></span>
                     </button>
                 </div>
             </form>
-        </section>
+        </div>
+    </div>
 
-        <section class="sources-section">
-            <h2>Registered Sources</h2>
-            
-            <!-- Loading Indicator for Source List -->
-            <div id="list-loading" class="loading-container" hidden>
-                <div class="loading-spinner"></div>
-                <p>Loading sources...</p>
+    <!-- Subsource Creation Modal -->
+    <div id="subsource-modal" class="modal" hidden role="dialog" aria-labelledby="subsource-modal-title" aria-modal="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="subsource-modal-title">Add Subsource</h3>
+                <button id="subsource-modal-close" class="modal-close" aria-label="Close modal">&times;</button>
             </div>
+            <form id="subsource-form" novalidate>
+                <input type="hidden" id="subsource-platform-id" name="platform_id">
+                
+                <div class="form-group">
+                    <label>Parent Platform</label>
+                    <div id="subsource-platform-name" class="platform-badge"></div>
+                </div>
 
-            <!-- Empty State Message -->
-            <div id="empty-state" class="empty-state" hidden>
-                <p>No sources have been configured yet.</p>
-                <p>Register your first source using the form above.</p>
+                <div class="form-group">
+                    <label for="subsource-name">
+                        Subsource Name <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="subsource-name" 
+                        name="name" 
+                        required
+                        placeholder="e.g., NBA, r/programming, elonmusk"
+                        aria-required="true"
+                        aria-describedby="subsource-name-error"
+                        autocomplete="off"
+                    >
+                    <span id="subsource-name-error" class="field-error" role="alert"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="subsource-identifier">
+                        Identifier <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="subsource-identifier" 
+                        name="identifier" 
+                        required
+                        placeholder="e.g., UCxxx (YouTube), programming (Reddit), elonmusk (X)"
+                        aria-required="true"
+                        aria-describedby="subsource-identifier-error subsource-identifier-help"
+                        autocomplete="off"
+                    >
+                    <span id="subsource-identifier-help" class="field-help">
+                        Platform-specific identifier (channel ID, subreddit name, or handle)
+                    </span>
+                    <span id="subsource-identifier-error" class="field-error" role="alert"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="subsource-url">
+                        URL <span class="optional">(optional)</span>
+                    </label>
+                    <input 
+                        type="url" 
+                        id="subsource-url" 
+                        name="url" 
+                        placeholder="https://... (auto-generated if not provided)"
+                        aria-describedby="subsource-url-help"
+                        autocomplete="url"
+                    >
+                    <span id="subsource-url-help" class="field-help">
+                        Direct URL to the subsource (will be auto-generated based on platform and identifier if not provided)
+                    </span>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="subsource-cancel-btn" class="btn btn-secondary">
+                        Cancel
+                    </button>
+                    <button type="submit" id="subsource-submit-btn" class="btn btn-primary">
+                        <span class="button-text">Create Subsource</span>
+                        <span class="loading-spinner" hidden aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="confirm-modal" class="modal" hidden role="dialog" aria-labelledby="confirm-modal-title" aria-modal="true">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3 id="confirm-modal-title">Confirm Action</h3>
             </div>
-
-            <!-- Source List Container -->
-            <div id="source-list" class="source-list"></div>
-        </section>
-    </main>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="form-actions">
+                <button type="button" id="confirm-cancel-btn" class="btn btn-secondary">
+                    Cancel
+                </button>
+                <button type="button" id="confirm-ok-btn" class="btn btn-danger">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
 
     <footer>
-        <p>Argus Notification Aggregation System</p>
+        <p>&copy; 2024 Argus. Hierarchical source management for notification aggregation.</p>
     </footer>
 
-    <script src="/js/app.js"></script>
+    <script src="/js/app.js?v=11"></script>
 </body>
 </html>

@@ -28,6 +28,90 @@ type discordEmbedFoot struct {
 	Text string `json:"text,omitempty"`
 }
 
+// formatSource extracts hierarchical source information from event metadata
+// Returns "Platform - Subsource" if both platform_name and subsource_name are present
+// Falls back to event.Source if either is missing
+func formatSource(e *events.Event) string {
+	platformName, hasPlatform := e.Metadata["platform_name"].(string)
+	subsourceName, hasSubsource := e.Metadata["subsource_name"].(string)
+
+	if hasPlatform && hasSubsource && platformName != "" && subsourceName != "" {
+		return fmt.Sprintf("%s - %s", platformName, subsourceName)
+	}
+
+	// Fallback to legacy source field
+	return e.Source
+}
+
+// Notifier provides Discord notification functionality with store access
+type Notifier struct {
+	store Store
+}
+
+// Store interface for webhook URL lookup
+type Store interface {
+	GetSubsource(id string) (Subsource, bool)
+	GetPlatform(id string) (Platform, bool)
+	GetSourceByName(name string) (Source, bool)
+}
+
+// Subsource represents a subsource with platform information
+type Subsource struct {
+	ID         string
+	PlatformID string
+	Name       string
+}
+
+// Platform represents a platform with webhook configuration
+type Platform struct {
+	ID             string
+	Name           string
+	DiscordWebhook string
+}
+
+// Source represents a legacy flat source
+type Source struct {
+	ID             string
+	Name           string
+	DiscordWebhook string
+}
+
+// NewNotifier creates a new Notifier with store access
+func NewNotifier(store Store) *Notifier {
+	return &Notifier{store: store}
+}
+
+// GetWebhookURL retrieves the Discord webhook URL for an event
+// Uses hierarchical lookup (subsource -> platform) if subsource_id is present
+// Falls back to legacy source lookup for backward compatibility
+func (n *Notifier) GetWebhookURL(e *events.Event) (string, error) {
+	// Extract subsource_id from metadata
+	subsourceID, ok := e.Metadata["subsource_id"].(string)
+	if !ok || subsourceID == "" {
+		// Fallback: lookup by source name (backward compatibility)
+		source, found := n.store.GetSourceByName(e.Source)
+		if !found {
+			return "", fmt.Errorf("source not found: %s", e.Source)
+		}
+		return source.DiscordWebhook, nil
+	}
+
+	// Get subsource with platform information
+	subsource, found := n.store.GetSubsource(subsourceID)
+	if !found {
+		return "", fmt.Errorf("subsource not found: %s", subsourceID)
+	}
+
+	// Get platform to retrieve webhook
+	platform, found := n.store.GetPlatform(subsource.PlatformID)
+	if !found {
+		return "", fmt.Errorf("platform not found: %s", subsource.PlatformID)
+	}
+
+	return platform.DiscordWebhook, nil
+}
+
+
 func RenderDiscordEmbed(e *events.Event) discordPayload {
 	sourceType, _ := e.Metadata["source_type"].(string)
 	author, _ := e.Metadata["author"].(string)
@@ -37,7 +121,8 @@ func RenderDiscordEmbed(e *events.Event) discordPayload {
 	if sourceType != "" {
 		descParts = append(descParts, fmt.Sprintf("**Platform:** %s", sourceType))
 	}
-	descParts = append(descParts, fmt.Sprintf("**Source:** %s", e.Source))
+	// Use formatSource to display hierarchical source information
+	descParts = append(descParts, fmt.Sprintf("**Source:** %s", formatSource(e)))
 	if author != "" {
 		descParts = append(descParts, fmt.Sprintf("**Author:** %s", author))
 	}

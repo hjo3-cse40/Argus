@@ -8,10 +8,10 @@ import (
 )
 
 type MarkDeliveredHandler struct {
-	Store *store.MemoryStore
+	Store store.Store
 }
 
-func NewMarkDeliveredHandler(st *store.MemoryStore) *MarkDeliveredHandler {
+func NewMarkDeliveredHandler(st store.Store) *MarkDeliveredHandler {
 	return &MarkDeliveredHandler{Store: st}
 }
 
