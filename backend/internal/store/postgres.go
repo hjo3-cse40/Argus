@@ -794,3 +794,100 @@ func (s *PostgresStore) DeleteSubsource(id string) error {
 
 	return nil
 }
+
+// CreateUser inserts a new user into the database
+func (s *PostgresStore) CreateUser(user User) error {
+	if user.ID == "" {
+		user.ID = uuid.New().String()
+	}
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = time.Now().UTC()
+	}
+
+	_, err := s.db.Exec(`
+		INSERT INTO users (id, email, password_hash, created_at)
+		VALUES ($1, $2, $3, $4)`,
+		user.ID, user.Email, user.PasswordHash, user.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("create user: %w", err)
+	}
+	return nil
+}
+
+// GetUserByEmail retrieves a user by email address
+func (s *PostgresStore) GetUserByEmail(email string) (User, bool) {
+	var u User
+	err := s.db.QueryRow(`
+		SELECT id, email, password_hash, created_at
+		FROM users WHERE email = $1`, email,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt)
+	if err != nil {
+		return User{}, false
+	}
+	return u, true
+}
+
+// GetUserByID retrieves a user by ID
+func (s *PostgresStore) GetUserByID(id string) (User, bool) {
+	var u User
+	err := s.db.QueryRow(`
+		SELECT id, email, password_hash, created_at
+		FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt)
+	if err != nil {
+		return User{}, false
+	}
+	return u, true
+}
+
+// CreateSession inserts a new session into the database
+func (s *PostgresStore) CreateSession(session Session) error {
+	if session.SessionID == "" {
+		session.SessionID = uuid.New().String()
+	}
+	if session.CreatedAt.IsZero() {
+		session.CreatedAt = time.Now().UTC()
+	}
+
+	_, err := s.db.Exec(`
+		INSERT INTO sessions (session_id, user_id, created_at, expires_at)
+		VALUES ($1, $2, $3, $4)`,
+		session.SessionID, session.UserID, session.CreatedAt, session.ExpiresAt,
+	)
+	if err != nil {
+		return fmt.Errorf("create session: %w", err)
+	}
+	return nil
+}
+
+// GetSession retrieves a session by session ID
+func (s *PostgresStore) GetSession(sessionID string) (Session, bool) {
+	var sess Session
+	err := s.db.QueryRow(`
+		SELECT session_id, user_id, created_at, expires_at
+		FROM sessions WHERE session_id = $1`, sessionID,
+	).Scan(&sess.SessionID, &sess.UserID, &sess.CreatedAt, &sess.ExpiresAt)
+	if err != nil {
+		return Session{}, false
+	}
+	return sess, true
+}
+
+// DeleteSession removes a session by session ID
+func (s *PostgresStore) DeleteSession(sessionID string) error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE session_id = $1`, sessionID)
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	return nil
+}
+
+// DeleteExpiredSessions removes all sessions past their expiry time
+func (s *PostgresStore) DeleteExpiredSessions() error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE expires_at < NOW()`)
+	if err != nil {
+		return fmt.Errorf("delete expired sessions: %w", err)
+	}
+	return nil
+}

@@ -32,6 +32,15 @@ type Store interface {
 	UpdateSubsource(id string, subsource Subsource) error
 	DeleteSubsource(id string) error
 
+	// Auth Operations
+	CreateUser(user User) error
+	GetUserByEmail(email string) (User, bool)
+	GetUserByID(id string) (User, bool)
+
+	CreateSession(session Session) error
+	GetSession(sessionID string) (Session, bool)
+	DeleteSession(sessionID string) error
+	DeleteExpiredSessions() error
 	// Lifecycle
 	Close() error
 }

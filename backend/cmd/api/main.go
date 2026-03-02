@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	apphttp "argus-backend/internal/http"
+	"argus-backend/internal/auth"
 	"argus-backend/internal/config"
+	apphttp "argus-backend/internal/http"
 	"argus-backend/internal/mq"
 	"argus-backend/internal/store"
 )
@@ -28,17 +29,18 @@ func main() {
 	if err := mqClient.DeclareQueue("raw_events"); err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Initialize PostgreSQL store
 	st, err := store.NewPostgresStore(cfg.Database.ConnectionString(), cfg.DeliveryLimit)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer st.Close()
-	
+
 	log.Printf("Connected to PostgreSQL database at %s:%s", cfg.Database.Host, cfg.Database.Port)
-	
-	handler := apphttp.NewRouter(mqClient, st)
+
+	authService := auth.NewService(st)
+	handler := apphttp.NewRouter(mqClient, st, authService)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -51,5 +53,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-

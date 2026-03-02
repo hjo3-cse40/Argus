@@ -60,6 +60,19 @@ type SubsourceWithPlatform struct {
 	Subsource
 	PlatformName string `json:"platform_name"`
 }
+type User struct {
+	ID           string    `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type Session struct {
+	SessionID string    `json:"session_id"`
+	UserID    string    `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
 
 type MemoryStore struct {
 	mu         sync.Mutex
@@ -67,6 +80,8 @@ type MemoryStore struct {
 	sources    []Source
 	platforms  []Platform
 	subsources []Subsource
+	users      []User
+	sessions   []Session
 	limit      int
 }
 
@@ -146,7 +161,6 @@ func (s *MemoryStore) ListDeliveriesByPlatform(platformID string) []Delivery {
 	}
 	return filtered
 }
-
 
 // AddSource stores a new source configuration with generated UUID
 func (s *MemoryStore) AddSource(source Source) error {
@@ -263,7 +277,7 @@ func (s *MemoryStore) ListPlatforms() []Platform {
 
 	out := make([]Platform, len(s.platforms))
 	copy(out, s.platforms)
-	
+
 	// Sort by name ascending
 	for i := 0; i < len(out)-1; i++ {
 		for j := i + 1; j < len(out); j++ {
@@ -272,7 +286,7 @@ func (s *MemoryStore) ListPlatforms() []Platform {
 			}
 		}
 	}
-	
+
 	return out
 }
 
@@ -356,7 +370,7 @@ func (s *MemoryStore) ListSubsources(platformID string) []SubsourceWithPlatform 
 	defer s.mu.Unlock()
 
 	out := make([]SubsourceWithPlatform, 0)
-	
+
 	// Find the platform name
 	var platformName string
 	for _, platform := range s.platforms {
@@ -375,7 +389,7 @@ func (s *MemoryStore) ListSubsources(platformID string) []SubsourceWithPlatform 
 			})
 		}
 	}
-	
+
 	return out
 }
 
@@ -440,7 +454,6 @@ func (s *MemoryStore) DeleteSubsource(id string) error {
 	}
 	return nil
 }
-
 
 // GetPlatform retrieves a platform by ID
 func (s *MemoryStore) GetPlatform(id string) (Platform, bool) {

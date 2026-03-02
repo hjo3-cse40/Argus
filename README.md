@@ -239,3 +239,96 @@ go run ./cmd/cli
   marked delivered in API: status=200 OK
   DELIVERED + ACKED
   ```
+  
+## Authentication 
+
+The API now supports user registration, login, logout, and protected routes using session-based authentication with bcrypt password hashing.
+
+### 8) Test Auth Endpoints
+
+Make sure the API is running:
+```bash
+cd backend
+go run ./cmd/api
+```
+
+#### Register a new account
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "password123"}'
+```
+
+Expected response:
+```json
+{ "message": "Account created successfully" }
+```
+
+#### Login
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{"email": "test@example.com", "password": "password123"}'
+```
+
+The `-c cookies.txt` flag saves the session cookie locally for subsequent requests.
+
+Expected response:
+```json
+{ "message": "Logged in successfully" }
+```
+
+#### Get current user (protected route)
+```bash
+curl -X GET http://localhost:8080/api/auth/me \
+  -b cookies.txt
+```
+
+Expected response:
+```json
+{
+  "id": "...",
+  "email": "test@example.com",
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### Logout
+```bash
+curl -X POST http://localhost:8080/api/auth/logout \
+  -b cookies.txt
+```
+
+Expected response:
+```json
+{ "message": "Logged out successfully" }
+```
+
+### 9) Verify Auth Data in Database
+
+Connect to the database:
+```bash
+docker exec -it $(docker compose ps -q db) psql -U argus -d argus
+```
+
+Check registered users:
+```sql
+SELECT id, email, created_at FROM users;
+```
+
+Check active sessions:
+```sql
+SELECT session_id, user_id, created_at, expires_at FROM sessions;
+```
+
+After logout, the session should be removed:
+```sql
+SELECT * FROM sessions;
+-- Should return 0 rows
+```
+
+Exit psql:
+```bash
+\q
+```

@@ -6,12 +6,13 @@ import (
 	"os"
 	"strings"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/http/handlers"
 	"argus-backend/internal/mq"
 	"argus-backend/internal/store"
 )
 
-func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
+func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", handlers.Health)
@@ -56,6 +57,13 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 	mux.HandleFunc("PUT /api/subsources/{id}", subh.Update)
 	mux.HandleFunc("DELETE /api/subsources/{id}", subh.Delete)
 
+	// Auth endpoints
+	ah := handlers.NewAuthHandler(authService)
+	mux.HandleFunc("POST /api/auth/register", ah.Register)
+	mux.HandleFunc("POST /api/auth/login", ah.Login)
+	mux.HandleFunc("POST /api/auth/logout", ah.Logout)
+	mux.HandleFunc("GET /api/auth/me", authService.RequireAuth(http.HandlerFunc(ah.Me)).ServeHTTP)
+
 	// Test endpoint to serve CSS directly
 	mux.HandleFunc("GET /test-css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css")
@@ -66,15 +74,15 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 	// Try different paths to find the static directory
 	var staticDir string
 	if _, err := os.Stat("static"); err == nil {
-		staticDir = "static"  // Running from project root
+		staticDir = "static" // Running from project root
 	} else if _, err := os.Stat("../static"); err == nil {
-		staticDir = "../static"  // Running from backend directory
+		staticDir = "../static" // Running from backend directory
 	} else {
 		log.Fatal("Could not find static directory")
 	}
-	
+
 	log.Printf("Serving static files from: %s", staticDir)
-	
+
 	// Serve CSS files - MUST be registered before catch-all handler
 	mux.HandleFunc("GET /css/styles.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css")
@@ -82,7 +90,7 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 		log.Printf("Serving CSS file: %s from %s", r.URL.Path, staticDir)
 		http.ServeFile(w, r, staticDir+"/css/styles.css")
 	})
-	
+
 	// Also handle CSS with query parameters (cache busting)
 	mux.HandleFunc("/css/styles.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css")
@@ -90,7 +98,7 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 		log.Printf("Serving CSS file with params: %s from %s", r.URL.String(), staticDir)
 		http.ServeFile(w, r, staticDir+"/css/styles.css")
 	})
-	
+
 	// Serve JS files - MUST be registered before catch-all handler
 	mux.HandleFunc("GET /js/app.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript")
@@ -98,7 +106,7 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 		log.Printf("Serving JS file: %s from %s", r.URL.Path, staticDir)
 		http.ServeFile(w, r, staticDir+"/js/app.js")
 	})
-	
+
 	// Also handle JS with query parameters (cache busting)
 	mux.HandleFunc("/js/app.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript")
@@ -106,7 +114,7 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 		log.Printf("Serving JS file with params: %s from %s", r.URL.String(), staticDir)
 		http.ServeFile(w, r, staticDir+"/js/app.js")
 	})
-	
+
 	// Serve the main HTML file and other static assets - MUST be last
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Don't serve API routes through static handler
@@ -114,13 +122,13 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		
+
 		// Don't serve CSS/JS through catch-all - they have specific handlers
 		if strings.HasPrefix(r.URL.Path, "/css/") || strings.HasPrefix(r.URL.Path, "/js/") {
 			http.NotFound(w, r)
 			return
 		}
-		
+
 		// For root path, serve index.html
 		if r.URL.Path == "/" {
 			w.Header().Set("Content-Type", "text/html")
@@ -128,7 +136,7 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 			http.ServeFile(w, r, staticDir+"/index.html")
 			return
 		}
-		
+
 		// For other paths, try to serve the file
 		log.Printf("Serving static file: %s from %s", r.URL.Path, staticDir)
 		http.ServeFile(w, r, staticDir+r.URL.Path)
@@ -136,5 +144,3 @@ func NewRouter(mqClient *mq.Client, st store.Store) http.Handler {
 
 	return mux
 }
-
-

@@ -78,27 +78,52 @@ var migrations = []string{
 
 	// Create index on deliveries.subsource_id for efficient subsource-based queries
 	`CREATE INDEX IF NOT EXISTS idx_deliveries_subsource_id ON deliveries(subsource_id)`,
+
+	// Create users table
+	`CREATE TABLE IF NOT EXISTS users (
+		id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		email         TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		created_at    TIMESTAMPTZ NOT NULL
+	)`,
+
+	// Create index on users.email for efficient lookup
+	`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
+
+	// Create sessions table
+	`CREATE TABLE IF NOT EXISTS sessions (
+		session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		created_at TIMESTAMPTZ NOT NULL,
+		expires_at TIMESTAMPTZ NOT NULL
+	)`,
+
+	// Create index on sessions.user_id for efficient user-based lookup
+	`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`,
+
+	// Create index on sessions.expires_at for efficient expiry cleanup
+	`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`,
 }
 
 // MigrateFlatToHierarchical migrates data from the flat sources table to hierarchical platforms and subsources tables
 func MigrateFlatToHierarchical(store Store) error {
 	// This migration function transforms the flat sources table into hierarchical structure
 	// It should only be called once after the schema is set up but before dropping the sources table
-	
+
 	// Step 1: Get all sources from the flat table
 	sources := store.ListSources()
 	if len(sources) == 0 {
 		// No sources to migrate, this is fine
 		return nil
 	}
-	
+
 	// Step 2: Extract unique platform types and validate webhook consistency
 	platformData := make(map[string]struct {
-		webhook string
-		secret  string
+		webhook   string
+		secret    string
 		createdAt time.Time
 	})
-	
+
 	for _, source := range sources {
 		if existing, exists := platformData[source.Type]; exists {
 			// Check webhook consistency
@@ -107,8 +132,8 @@ func MigrateFlatToHierarchical(store Store) error {
 			}
 		} else {
 			platformData[source.Type] = struct {
-				webhook string
-				secret  string
+				webhook   string
+				secret    string
 				createdAt time.Time
 			}{
 				webhook:   source.DiscordWebhook,
@@ -117,7 +142,7 @@ func MigrateFlatToHierarchical(store Store) error {
 			}
 		}
 	}
-	
+
 	// Step 3: Create platform records for each unique type
 	platformIDs := make(map[string]string) // type -> platform_id
 	for platformType, data := range platformData {
@@ -127,18 +152,18 @@ func MigrateFlatToHierarchical(store Store) error {
 			platformIDs[platformType] = existingPlatform.ID
 			continue
 		}
-		
+
 		platform := Platform{
 			Name:           platformType,
 			DiscordWebhook: data.webhook,
 			WebhookSecret:  data.secret,
 			CreatedAt:      data.createdAt,
 		}
-		
+
 		if err := store.AddPlatform(platform); err != nil {
 			return fmt.Errorf("failed to create platform %s: %w", platformType, err)
 		}
-		
+
 		// Get the created platform to retrieve its ID
 		createdPlatform, found := store.GetPlatformByName(platformType)
 		if !found {
@@ -146,17 +171,17 @@ func MigrateFlatToHierarchical(store Store) error {
 		}
 		platformIDs[platformType] = createdPlatform.ID
 	}
-	
+
 	// Step 4: Create subsource records from existing sources
 	for _, source := range sources {
 		platformID := platformIDs[source.Type]
-		
+
 		// Use repository_url as identifier if available, otherwise use name
 		identifier := source.Name
 		if source.RepositoryURL != "" {
 			identifier = source.RepositoryURL
 		}
-		
+
 		// Check if subsource already exists (idempotency)
 		existingSubsources := store.ListSubsources(platformID)
 		subsourceExists := false
@@ -166,11 +191,11 @@ func MigrateFlatToHierarchical(store Store) error {
 				break
 			}
 		}
-		
+
 		if subsourceExists {
 			continue
 		}
-		
+
 		// Don't set URL field - let AddSubsource auto-generate it
 		// The RepositoryURL is just an identifier, not a full URL
 		subsource := Subsource{
@@ -180,15 +205,15 @@ func MigrateFlatToHierarchical(store Store) error {
 			URL:        "", // Leave empty to trigger auto-generation
 			CreatedAt:  source.CreatedAt,
 		}
-		
+
 		if err := store.AddSubsource(subsource); err != nil {
 			return fmt.Errorf("failed to create subsource %s: %w", source.Name, err)
 		}
 	}
-	
+
 	// Step 5: Migration completed successfully
 	// Note: The actual dropping of the sources table should be done by the database migration
 	// This function only handles the data migration part
-	
+
 	return nil
 }
