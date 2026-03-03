@@ -32,6 +32,11 @@ type Store interface {
 	UpdateSubsource(id string, subsource Subsource) error
 	DeleteSubsource(id string) error
 
+	// Filter operations
+	AddFilter(filter DestinationFilter) error
+	ListFilters(platformID string) []DestinationFilter
+	DeleteFilter(id string) error
+
 	// Auth Operations
 	CreateUser(user User) error
 	GetUserByEmail(email string) (User, bool)

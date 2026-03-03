@@ -9,9 +9,41 @@ import (
 
 	"argus-backend/internal/config"
 	"argus-backend/internal/events"
+	"argus-backend/internal/filter"
 	"argus-backend/internal/notifier"
+	"argus-backend/internal/store"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+// notifierStoreAdapter wraps store.Store to satisfy notifier.Store,
+// converting between the store and notifier type systems.
+type notifierStoreAdapter struct {
+	st store.Store
+}
+
+func (a *notifierStoreAdapter) GetSubsource(id string) (notifier.Subsource, bool) {
+	sub, found := a.st.GetSubsource(id)
+	if !found {
+		return notifier.Subsource{}, false
+	}
+	return notifier.Subsource{ID: sub.ID, PlatformID: sub.PlatformID, Name: sub.Name}, true
+}
+
+func (a *notifierStoreAdapter) GetPlatform(id string) (notifier.Platform, bool) {
+	p, found := a.st.GetPlatform(id)
+	if !found {
+		return notifier.Platform{}, false
+	}
+	return notifier.Platform{ID: p.ID, Name: p.Name, DiscordWebhook: p.DiscordWebhook}, true
+}
+
+func (a *notifierStoreAdapter) GetSourceByName(name string) (notifier.Source, bool) {
+	s, found := a.st.GetSourceByName(name)
+	if !found {
+		return notifier.Source{}, false
+	}
+	return notifier.Source{ID: s.ID, Name: s.Name, DiscordWebhook: s.DiscordWebhook}, true
+}
 
 func main() {
 	cfg, err := config.Load()
@@ -24,11 +56,20 @@ func main() {
 	amqpURL := cfg.RabbitMQ.URL
 	apiBase := cfg.API.BaseURL
 
-	discordWebhook := cfg.Destinations.DiscordWebhookURL
-	if discordWebhook == "" {
-		log.Fatal("DISCORD_WEBHOOK_URL not set")
+	fallbackWebhook := cfg.Destinations.DiscordWebhookURL
+	if fallbackWebhook != "" {
+		log.Printf("Fallback Discord webhook URL loaded")
 	}
-	log.Printf("✓ Discord webhook URL loaded")
+
+	// Connect to database for per-platform webhook resolution and filtering
+	connStr := cfg.Database.ConnectionString()
+	st, err := store.NewPostgresStore(connStr, cfg.DeliveryLimit)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer st.Close()
+
+	noti := notifier.NewNotifier(&notifierStoreAdapter{st: st})
 
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
@@ -44,21 +85,21 @@ func main() {
 
 	queue := "raw_events"
 	_, err = ch.QueueDeclare(
-    	queue,
-    	true,
-    	false,
-    	false,
-    	false,
-    	nil,
+		queue,
+		true,
+		false,
+		false,
+		false,
+		nil,
 	)
 	if err != nil {
-    	log.Fatal("queue declare:", err)
+		log.Fatal("queue declare:", err)
 	}
 
 	msgs, err := ch.Consume(
 		queue,
 		"",
-		false, // autoAck = false -> we will Ack manually
+		false,
 		false,
 		false,
 		false,
@@ -78,7 +119,6 @@ func main() {
 	for msg := range msgs {
 		log.Printf("RECEIVED raw message: %s", string(msg.Body))
 
-		// parse event
 		ev, err := events.FromJSON(msg.Body)
 		if err != nil {
 			log.Printf("event parse error: %v", err)
@@ -86,7 +126,6 @@ func main() {
 			continue
 		}
 
-		// Validate event
 		if err := ev.Validate(); err != nil {
 			log.Printf("event validation error: %v", err)
 			_ = msg.Ack(false)
@@ -95,7 +134,32 @@ func main() {
 
 		log.Printf("RECEIVED event_id=%s", ev.EventID)
 
-		//Retry Discord delivery
+		// Resolve per-platform webhook; fall back to global config
+		webhookURL, platformID, resolveErr := noti.ResolveDestination(ev)
+		if resolveErr != nil || webhookURL == "" {
+			if fallbackWebhook != "" {
+				log.Printf("destination resolve failed (%v), using fallback webhook", resolveErr)
+				webhookURL = fallbackWebhook
+				platformID = ""
+			} else {
+				log.Printf("destination resolve failed and no fallback: %v", resolveErr)
+				_ = msg.Ack(false)
+				continue
+			}
+		}
+
+		// Apply per-destination filters
+		if platformID != "" {
+			filters := st.ListFilters(platformID)
+			if !filter.Evaluate(ev, filters) {
+				log.Printf("FILTERED event_id=%s platform_id=%s (did not pass destination filters)",
+					ev.EventID, platformID)
+				_ = msg.Ack(false)
+				continue
+			}
+		}
+
+		// Retry Discord delivery
 		var lastErr error
 		success := false
 		attemptsMade := 0
@@ -103,7 +167,7 @@ func main() {
 		for attempt := 1; attempt <= maxRetries; attempt++ {
 			attemptsMade = attempt
 
-			err := notifier.SendDiscordWebhook(discordWebhook, ev)
+			err := notifier.SendDiscordWebhook(webhookURL, ev)
 			if err == nil {
 				success = true
 				log.Printf("discord delivered event_id=%s attempt=%d/%d",
@@ -120,7 +184,7 @@ func main() {
 			}
 		}
 
-		//Record failure after retry limit
+		// Record failure after retry limit
 		if !success {
 			errMsg := ""
 			if lastErr != nil {
@@ -128,9 +192,9 @@ func main() {
 			}
 
 			failPayload := map[string]any{
-				"event_id":     ev.EventID,
-				"retry_count":  attemptsMade,
-				"error":        errMsg,
+				"event_id":    ev.EventID,
+				"retry_count": attemptsMade,
+				"error":       errMsg,
 			}
 
 			body, _ := json.Marshal(failPayload)
@@ -145,7 +209,6 @@ func main() {
 				log.Printf("marked failed in API: status=%s", resp.Status)
 			}
 
-			// Ack message
 			if err := msg.Ack(false); err != nil {
 				log.Printf("ack error: %v", err)
 			} else {
@@ -167,7 +230,6 @@ func main() {
 			log.Printf("marked delivered in API: status=%s", resp.Status)
 		}
 
-		// Dummy delivery complete -> Ack message
 		if err := msg.Ack(false); err != nil {
 			log.Printf("ack error: %v", err)
 		} else {
@@ -175,4 +237,3 @@ func main() {
 		}
 	}
 }
-

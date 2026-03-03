@@ -795,6 +795,63 @@ func (s *PostgresStore) DeleteSubsource(id string) error {
 	return nil
 }
 
+// AddFilter inserts a new destination filter for a platform
+func (s *PostgresStore) AddFilter(filter DestinationFilter) error {
+	if filter.ID == "" {
+		filter.ID = uuid.New().String()
+	}
+	if filter.CreatedAt.IsZero() {
+		filter.CreatedAt = time.Now().UTC()
+	}
+
+	_, err := s.db.Exec(`
+		INSERT INTO destination_filters (id, platform_id, filter_type, pattern, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+	`, filter.ID, filter.PlatformID, filter.FilterType, filter.Pattern, filter.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to insert filter: %w", err)
+	}
+	return nil
+}
+
+// ListFilters returns all destination filters for a given platform
+func (s *PostgresStore) ListFilters(platformID string) []DestinationFilter {
+	rows, err := s.db.Query(`
+		SELECT id, platform_id, filter_type, pattern, created_at
+		FROM destination_filters
+		WHERE platform_id = $1
+		ORDER BY created_at DESC
+	`, platformID)
+	if err != nil {
+		log.Printf("Failed to list filters: %v", err)
+		return []DestinationFilter{}
+	}
+	defer rows.Close()
+
+	var filters []DestinationFilter
+	for rows.Next() {
+		var f DestinationFilter
+		if err := rows.Scan(&f.ID, &f.PlatformID, &f.FilterType, &f.Pattern, &f.CreatedAt); err != nil {
+			log.Printf("Failed to scan filter: %v", err)
+			continue
+		}
+		filters = append(filters, f)
+	}
+	if filters == nil {
+		return []DestinationFilter{}
+	}
+	return filters
+}
+
+// DeleteFilter removes a destination filter by ID
+func (s *PostgresStore) DeleteFilter(id string) error {
+	_, err := s.db.Exec(`DELETE FROM destination_filters WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete filter: %w", err)
+	}
+	return nil
+}
+
 // CreateUser inserts a new user into the database
 func (s *PostgresStore) CreateUser(user User) error {
 	if user.ID == "" {

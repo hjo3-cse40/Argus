@@ -74,6 +74,14 @@ type Session struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
+type DestinationFilter struct {
+	ID         string    `json:"id"`
+	PlatformID string    `json:"platform_id"`
+	FilterType string    `json:"filter_type"`
+	Pattern    string    `json:"pattern"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type MemoryStore struct {
 	mu         sync.Mutex
 	deliveries []Delivery
@@ -82,6 +90,7 @@ type MemoryStore struct {
 	subsources []Subsource
 	users      []User
 	sessions   []Session
+	filters    []DestinationFilter
 	limit      int
 }
 
@@ -503,7 +512,7 @@ func (s *MemoryStore) UpdatePlatform(id string, platform Platform) error {
 	return &ValidationError{Details: []string{fmt.Sprintf("platform not found: %s", id)}}
 }
 
-// DeletePlatform removes a platform and cascades to subsources
+// DeletePlatform removes a platform and cascades to subsources and filters
 func (s *MemoryStore) DeletePlatform(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -533,6 +542,58 @@ func (s *MemoryStore) DeletePlatform(id string) error {
 	}
 	s.subsources = newSubsources
 
-	return nil
+	// Cascade delete filters
+	newFilters := make([]DestinationFilter, 0)
+	for _, f := range s.filters {
+		if f.PlatformID != id {
+			newFilters = append(newFilters, f)
+		}
+	}
+	s.filters = newFilters
 
+	return nil
+}
+
+func (s *MemoryStore) AddFilter(filter DestinationFilter) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if filter.ID == "" {
+		filter.ID = uuid.New().String()
+	}
+	if filter.CreatedAt.IsZero() {
+		filter.CreatedAt = time.Now().UTC()
+	}
+
+	s.filters = append(s.filters, filter)
+	return nil
+}
+
+func (s *MemoryStore) ListFilters(platformID string) []DestinationFilter {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []DestinationFilter
+	for _, f := range s.filters {
+		if f.PlatformID == platformID {
+			out = append(out, f)
+		}
+	}
+	if out == nil {
+		return []DestinationFilter{}
+	}
+	return out
+}
+
+func (s *MemoryStore) DeleteFilter(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, f := range s.filters {
+		if f.ID == id {
+			s.filters = append(s.filters[:i], s.filters[i+1:]...)
+			return nil
+		}
+	}
+	return nil
 }

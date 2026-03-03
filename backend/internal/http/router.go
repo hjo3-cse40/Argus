@@ -57,6 +57,12 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 	mux.HandleFunc("PUT /api/subsources/{id}", subh.Update)
 	mux.HandleFunc("DELETE /api/subsources/{id}", subh.Delete)
 
+	// Filter management endpoints
+	fh := handlers.NewFiltersHandler(st)
+	mux.HandleFunc("POST /api/platforms/{platform_id}/filters", fh.Create)
+	mux.HandleFunc("GET /api/platforms/{platform_id}/filters", fh.List)
+	mux.HandleFunc("DELETE /api/filters/{id}", fh.Delete)
+
 	// Auth endpoints
 	ah := handlers.NewAuthHandler(authService)
 	mux.HandleFunc("POST /api/auth/register", ah.Register)

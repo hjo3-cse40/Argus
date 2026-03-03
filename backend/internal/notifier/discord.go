@@ -85,30 +85,34 @@ func NewNotifier(store Store) *Notifier {
 // Uses hierarchical lookup (subsource -> platform) if subsource_id is present
 // Falls back to legacy source lookup for backward compatibility
 func (n *Notifier) GetWebhookURL(e *events.Event) (string, error) {
-	// Extract subsource_id from metadata
+	url, _, err := n.ResolveDestination(e)
+	return url, err
+}
+
+// ResolveDestination returns the webhook URL and platform ID for an event.
+// The platform ID is needed to load per-destination filters.
+// Returns ("", "", err) if the destination cannot be resolved.
+func (n *Notifier) ResolveDestination(e *events.Event) (webhookURL string, platformID string, err error) {
 	subsourceID, ok := e.Metadata["subsource_id"].(string)
 	if !ok || subsourceID == "" {
-		// Fallback: lookup by source name (backward compatibility)
 		source, found := n.store.GetSourceByName(e.Source)
 		if !found {
-			return "", fmt.Errorf("source not found: %s", e.Source)
+			return "", "", fmt.Errorf("source not found: %s", e.Source)
 		}
-		return source.DiscordWebhook, nil
+		return source.DiscordWebhook, "", nil
 	}
 
-	// Get subsource with platform information
 	subsource, found := n.store.GetSubsource(subsourceID)
 	if !found {
-		return "", fmt.Errorf("subsource not found: %s", subsourceID)
+		return "", "", fmt.Errorf("subsource not found: %s", subsourceID)
 	}
 
-	// Get platform to retrieve webhook
 	platform, found := n.store.GetPlatform(subsource.PlatformID)
 	if !found {
-		return "", fmt.Errorf("platform not found: %s", subsource.PlatformID)
+		return "", "", fmt.Errorf("platform not found: %s", subsource.PlatformID)
 	}
 
-	return platform.DiscordWebhook, nil
+	return platform.DiscordWebhook, platform.ID, nil
 }
 
 

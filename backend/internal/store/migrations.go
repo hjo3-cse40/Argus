@@ -103,6 +103,17 @@ var migrations = []string{
 
 	// Create index on sessions.expires_at for efficient expiry cleanup
 	`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`,
+
+	// Create destination_filters table for per-platform content filtering (US 3.3)
+	`CREATE TABLE IF NOT EXISTS destination_filters (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		platform_id UUID NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+		filter_type TEXT NOT NULL CHECK (filter_type IN ('keyword_include', 'keyword_exclude')),
+		pattern TEXT NOT NULL,
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)`,
+
+	`CREATE INDEX IF NOT EXISTS idx_dest_filters_platform ON destination_filters(platform_id)`,
 }
 
 // MigrateFlatToHierarchical migrates data from the flat sources table to hierarchical platforms and subsources tables
