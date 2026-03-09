@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus — Login</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Argus</h1>
+  </header>
+
+  <main>
+    <section class="auth-section">
+      <h2>Login</h2>
+
+      <div id="error-message" class="message error-message" role="alert" hidden>
+        <p id="error-text"></p>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+          <span id="email-error" class="field-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+          <span id="password-error" class="field-error" role="alert"></span>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary">
+            <span class="button-text">Login</span>
+            <span class="loading-spinner" hidden aria-hidden="true"></span>
+          </button>
+        </div>
+      </form>
+
+      <p class="auth-link">Don't have an account? <a href="/register.html">Register</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Argus</p>
+  </footer>
+
+  <script src="/js/auth.js"></script>
+</body>
+</html>
