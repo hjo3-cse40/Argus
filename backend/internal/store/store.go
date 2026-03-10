@@ -41,7 +41,6 @@ type Source struct {
 
 type Platform struct {
 	ID             string    `json:"id"`
-	UserID         string    `json:"user_id"`
 	Name           string    `json:"name"`
 	DiscordWebhook string    `json:"discord_webhook"`
 	WebhookSecret  string    `json:"webhook_secret,omitempty"`
@@ -171,34 +170,6 @@ func (s *MemoryStore) ListDeliveriesByPlatform(platformID string) []Delivery {
 	}
 	return filtered
 }
-func (s *MemoryStore) ListDeliveriesByUser(userID string) []Delivery {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Build set of platform IDs for this user
-	platformIDs := make(map[string]bool)
-	for _, p := range s.platforms {
-		if p.UserID == userID {
-			platformIDs[p.ID] = true
-		}
-	}
-
-	// Build set of subsource IDs for those platforms
-	subsourceIDs := make(map[string]bool)
-	for _, sub := range s.subsources {
-		if platformIDs[sub.PlatformID] {
-			subsourceIDs[sub.ID] = true
-		}
-	}
-
-	var out []Delivery
-	for _, d := range s.deliveries {
-		if d.SubsourceID != nil && subsourceIDs[*d.SubsourceID] {
-			out = append(out, d)
-		}
-	}
-	return out
-}
 
 // AddSource stores a new source configuration with generated UUID
 func (s *MemoryStore) AddSource(source Source) error {
@@ -279,38 +250,43 @@ func (s *MemoryStore) Close() error {
 
 // AddPlatform stores a new platform configuration with generated UUID
 func (s *MemoryStore) AddPlatform(platform Platform) error {
+	// Validate platform data
 	if err := validatePlatform(platform); err != nil {
 		return err
 	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Check for duplicate name
 	for _, p := range s.platforms {
-		if p.Name == platform.Name && p.UserID == platform.UserID {
+		if p.Name == platform.Name {
 			return &ValidationError{Details: []string{fmt.Sprintf("platform name already exists: %s", platform.Name)}}
 		}
 	}
+
+	// Generate UUID if not provided
 	if platform.ID == "" {
 		platform.ID = uuid.New().String()
 	}
+
+	// Set creation timestamp
 	if platform.CreatedAt.IsZero() {
 		platform.CreatedAt = time.Now().UTC()
 	}
+
 	s.platforms = append(s.platforms, platform)
 	return nil
 }
 
 // ListPlatforms returns all platform configurations ordered by name ascending
-func (s *MemoryStore) ListPlatforms(userID string) []Platform {
+func (s *MemoryStore) ListPlatforms() []Platform {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var out []Platform
-	for _, p := range s.platforms {
-		if p.UserID == userID {
-			out = append(out, p)
-		}
-	}
+	out := make([]Platform, len(s.platforms))
+	copy(out, s.platforms)
+
 	// Sort by name ascending
 	for i := 0; i < len(out)-1; i++ {
 		for j := i + 1; j < len(out); j++ {
@@ -319,9 +295,7 @@ func (s *MemoryStore) ListPlatforms(userID string) []Platform {
 			}
 		}
 	}
-	if out == nil {
-		return []Platform{}
-	}
+
 	return out
 }
 
@@ -504,29 +478,33 @@ func (s *MemoryStore) GetPlatform(id string) (Platform, bool) {
 }
 
 // GetPlatformByName retrieves a platform by name
-func (s *MemoryStore) GetPlatformByName(name string, userID string) (Platform, bool) {
+func (s *MemoryStore) GetPlatformByName(name string) (Platform, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, p := range s.platforms {
-		if p.Name == name && p.UserID == userID {
-			return p, true
+
+	for _, platform := range s.platforms {
+		if platform.Name == name {
+			return platform, true
 		}
 	}
 	return Platform{}, false
 }
 
 // UpdatePlatform modifies platform configuration while preserving created_at
-func (s *MemoryStore) UpdatePlatform(id string, userID string, platform Platform) error {
+func (s *MemoryStore) UpdatePlatform(id string, platform Platform) error {
+	// Validate platform data
 	if err := validatePlatform(platform); err != nil {
 		return err
 	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	for i, p := range s.platforms {
-		if p.ID == id && p.UserID == userID {
+		if p.ID == id {
+			// Preserve created_at
 			platform.CreatedAt = p.CreatedAt
 			platform.ID = id
-			platform.UserID = userID
 			s.platforms[i] = platform
 			return nil
 		}
@@ -535,22 +513,27 @@ func (s *MemoryStore) UpdatePlatform(id string, userID string, platform Platform
 }
 
 // DeletePlatform removes a platform and cascades to subsources and filters
-func (s *MemoryStore) DeletePlatform(id string, userID string) error {
+func (s *MemoryStore) DeletePlatform(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Find and remove platform
 	platformIndex := -1
 	for i, p := range s.platforms {
-		if p.ID == id && p.UserID == userID {
+		if p.ID == id {
 			platformIndex = i
 			break
 		}
 	}
+
 	if platformIndex == -1 {
 		return nil
 	}
+
+	// Remove platform
 	s.platforms = append(s.platforms[:platformIndex], s.platforms[platformIndex+1:]...)
 
+	// Cascade delete subsources
 	newSubsources := make([]Subsource, 0)
 	for _, sub := range s.subsources {
 		if sub.PlatformID != id {
@@ -559,6 +542,7 @@ func (s *MemoryStore) DeletePlatform(id string, userID string) error {
 	}
 	s.subsources = newSubsources
 
+	// Cascade delete filters
 	newFilters := make([]DestinationFilter, 0)
 	for _, f := range s.filters {
 		if f.PlatformID != id {
@@ -566,6 +550,7 @@ func (s *MemoryStore) DeletePlatform(id string, userID string) error {
 		}
 	}
 	s.filters = newFilters
+
 	return nil
 }
 

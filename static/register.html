@@ -43,10 +43,7 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" id="submit-btn" class="btn btn-primary">
-            <span class="button-text">Create Account</span>
-            <span class="loading-spinner" hidden aria-hidden="true"></span>
-          </button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">Create Account</button>
         </div>
       </form>
 
@@ -73,8 +70,6 @@
 
       function setLoading(on) {
         submitBtn.disabled = on;
-        submitBtn.querySelector('.button-text').hidden = on;
-        submitBtn.querySelector('.loading-spinner').hidden = !on;
       }
 
       function showError(msg) {

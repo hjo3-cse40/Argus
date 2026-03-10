@@ -4,7 +4,7 @@
  */
 
 // If already logged in, go straight to dashboard
-if (window.location.pathname !== '/dashboard.html') {
+if (window.location.pathname === '/login.html' || window.location.pathname === '/register.html' || window.location.pathname === '/' || window.location.pathname === '/index.html') {
   fetch('/api/auth/me', { credentials: 'same-origin' })
     .then(res => {
       if (res.ok) {
@@ -40,9 +40,7 @@ if (window.location.pathname !== '/dashboard.html') {
   if (!form) return;
 
   function setLoading(on) {
-    submitBtn.disabled = on;
-    submitBtn.querySelector('.button-text').hidden = on;
-    submitBtn.querySelector('.loading-spinner').hidden = !on;
+    if (submitBtn) submitBtn.disabled = on;
   }
 
   function showError(msg) {
@@ -86,7 +84,6 @@ if (window.location.pathname !== '/dashboard.html') {
     clearErrors();
     if (!validate()) return;
 
-    setLoading(true);
     try {
       const res = await fetch(LOGIN_ENDPOINT, {
         method: 'POST',
@@ -111,8 +108,6 @@ if (window.location.pathname !== '/dashboard.html') {
 
     } catch (err) {
       showError('Cannot reach the server. Check your connection.');
-    } finally {
-      setLoading(false);
     }
   });
 
