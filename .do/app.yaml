@@ -1,0 +1,116 @@
+name: argus
+region: nyc
+
+services:
+  # API Server - serves REST API and static frontend files
+  - name: api
+    image:
+      registry_type: GHCR
+      repository: <org>/argus-api
+      tag: latest
+    http_port: 8080
+    routes:
+      - path: /
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: ENV
+        value: prod
+      - key: PORT
+        value: "8080"
+      - key: DB_HOST
+        value: ${db.HOSTNAME}
+      - key: DB_PORT
+        value: ${db.PORT}
+      - key: DB_USER
+        value: ${db.USERNAME}
+      - key: DB_PASSWORD
+        value: ${db.PASSWORD}
+        type: SECRET
+      - key: DB_NAME
+        value: ${db.DATABASE}
+      - key: RABBITMQ_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: DISCORD_WEBHOOK_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: RSSHUB_BASE_URL
+        value: http://rsshub:1200
+
+  # Worker Service - background worker processing RSS feed events
+  - name: worker
+    image:
+      registry_type: GHCR
+      repository: <org>/argus-worker
+      tag: latest
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: ENV
+        value: prod
+      - key: DB_HOST
+        value: ${db.HOSTNAME}
+      - key: DB_PORT
+        value: ${db.PORT}
+      - key: DB_USER
+        value: ${db.USERNAME}
+      - key: DB_PASSWORD
+        value: ${db.PASSWORD}
+        type: SECRET
+      - key: DB_NAME
+        value: ${db.DATABASE}
+      - key: RABBITMQ_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: DISCORD_WEBHOOK_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: RSSHUB_BASE_URL
+        value: http://rsshub:1200
+
+  # RSSHub Service - RSS feed aggregator
+  - name: rsshub
+    image:
+      registry_type: DOCKER_HUB
+      repository: diygod/rsshub
+      tag: latest
+    http_port: 1200
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: CACHE_TYPE
+        value: memory
+
+databases:
+  # PostgreSQL database for application data
+  - name: db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: argus-db
+    db_name: argus
+    db_user: argus
+
+# Note: RabbitMQ is configured as an external managed service (CloudAMQP)
+# The RABBITMQ_URL environment variable should be set in the DigitalOcean dashboard
+# or via the doctl CLI as a secret.
+#
+# HTTPS routing is automatically configured by DigitalOcean App Platform:
+# - SSL/TLS certificates are provisioned via Let's Encrypt
+# - HTTP requests are automatically redirected to HTTPS
+# - The API service is exposed on port 443 externally
+#
+# Internal networking:
+# - All services can communicate via internal hostnames (api, worker, rsshub, db)
+# - Infrastructure components (db, rsshub) are not exposed to the public internet
+# - Only the API service has a public route configured

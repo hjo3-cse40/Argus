@@ -5,6 +5,7 @@
 
 # Go
 /backend/vendor/
+/pkg/
 
 # Env (secrets)
 .env
