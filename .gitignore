@@ -2,6 +2,8 @@
 *.exe
 *.exe~
 /backend/rss
+.kiro/
+docs/
 
 # Go
 /backend/vendor/
