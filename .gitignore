@@ -2,9 +2,12 @@
 *.exe
 *.exe~
 /backend/rss
+.kiro/
+docs/
 
 # Go
 /backend/vendor/
+/pkg/
 
 # Env (secrets)
 .env

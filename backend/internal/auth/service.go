@@ -121,8 +121,9 @@ func (s *Service) setSessionCookie(w http.ResponseWriter, sessionID string, expi
 		Name:     sessionCookieName,
 		Value:    sessionID,
 		Expires:  expiresAt,
-		HttpOnly: true,  // not accessible via JS
-		Secure:   false, // SET TO TRUE FOR HTTPS * IMPORTANT *
+		MaxAge:   int(time.Until(expiresAt).Seconds()),
+		HttpOnly: true, // not accessible via JS
+		Secure:   true, // SET TO TRUE FOR HTTPS * IMPORTANT *
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 	})

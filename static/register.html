@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus — Register</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Argus</h1>
+  </header>
+
+  <main>
+    <section class="auth-section">
+      <h2>Create Account</h2>
+
+      <div id="error-message" class="message error-message" role="alert" hidden>
+        <p id="error-text"></p>
+      </div>
+
+      <div id="success-message" class="message success-message" role="status" hidden>
+        <p>Account created. <a href="/login.html">Login now</a></p>
+      </div>
+
+      <form id="register-form" novalidate>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+          <span id="email-error" class="field-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="••••••••">
+          <span id="password-error" class="field-error" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm">Confirm Password</label>
+          <input type="password" id="confirm" name="confirm" required autocomplete="new-password" placeholder="••••••••">
+          <span id="confirm-error" class="field-error" role="alert"></span>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Create Account</button>
+        </div>
+      </form>
+
+      <p class="auth-link">Already have an account? <a href="/login.html">Login</a></p>
+    </section>
+  </main>
+
+
+  <script>
+    (function () {
+      const REGISTER_ENDPOINT = '/api/auth/register';
+
+      const form          = document.getElementById('register-form');
+      const emailInput    = document.getElementById('email');
+      const passInput     = document.getElementById('password');
+      const confirmInput  = document.getElementById('confirm');
+      const submitBtn     = document.getElementById('submit-btn');
+      const errorMsg      = document.getElementById('error-message');
+      const errorText     = document.getElementById('error-text');
+      const successMsg    = document.getElementById('success-message');
+      const emailError    = document.getElementById('email-error');
+      const passError     = document.getElementById('password-error');
+      const confirmError  = document.getElementById('confirm-error');
+
+      function setLoading(on) {
+        submitBtn.disabled = on;
+      }
+
+      function showError(msg) {
+        errorText.textContent = msg;
+        errorMsg.hidden = false;
+      }
+
+      function clearErrors() {
+        errorMsg.hidden = true;
+        [emailError, passError, confirmError].forEach(el => { el.textContent = ''; });
+        [emailInput, passInput, confirmInput].forEach(el => el.removeAttribute('aria-invalid'));
+      }
+
+      function fieldError(input, el, msg) {
+        el.textContent = msg;
+        input.setAttribute('aria-invalid', 'true');
+      }
+
+      function validate() {
+        let ok = true;
+        const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailInput.value.trim()) {
+          fieldError(emailInput, emailError, 'Email is required.');
+          ok = false;
+        } else if (!emailRe.test(emailInput.value.trim())) {
+          fieldError(emailInput, emailError, 'Enter a valid email address.');
+          ok = false;
+        }
+
+        if (!passInput.value) {
+          fieldError(passInput, passError, 'Password is required.');
+          ok = false;
+        } else if (passInput.value.length < 8) {
+          fieldError(passInput, passError, 'Password must be at least 8 characters.');
+          ok = false;
+        }
+
+        if (!confirmInput.value) {
+          fieldError(confirmInput, confirmError, 'Please confirm your password.');
+          ok = false;
+        } else if (confirmInput.value !== passInput.value) {
+          fieldError(confirmInput, confirmError, 'Passwords do not match.');
+          ok = false;
+        }
+
+        return ok;
+      }
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearErrors();
+        if (!validate()) return;
+
+        setLoading(true);
+        try {
+          const res = await fetch(REGISTER_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email: emailInput.value.trim(), password: passInput.value }),
+          });
+
+          if (res.ok) {
+            form.hidden = true;
+            successMsg.hidden = false;
+            return;
+          }
+
+          if (res.status === 409) {
+            fieldError(emailInput, emailError, 'This email is already registered.');
+            return;
+          }
+
+          let body = {};
+          try { body = await res.json(); } catch (_) {}
+          showError(body.error || 'Something went wrong. Please try again.');
+
+        } catch (err) {
+          showError('Cannot reach the server. Check your connection.');
+        } finally {
+          setLoading(false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

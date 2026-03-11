@@ -120,6 +120,19 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 		log.Printf("Serving JS file with params: %s from %s", r.URL.String(), staticDir)
 		http.ServeFile(w, r, staticDir+"/js/app.js")
 	})
+	// Serve auth.js - handles GET /js/auth.js
+	mux.HandleFunc("GET /js/auth.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		http.ServeFile(w, r, staticDir+"/js/auth.js")
+	})
+
+	// Also handle auth.js with query parameters (cache busting)
+	mux.HandleFunc("/js/auth.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		http.ServeFile(w, r, staticDir+"/js/auth.js")
+	})
 
 	// Serve the main HTML file and other static assets - MUST be last
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -135,11 +148,23 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 			return
 		}
 
-		// For root path, serve index.html
+		// For root path, serve landing page
 		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/index.html", http.StatusFound)
+			return
+		}
+
+		// Serve index.html (landing page) without redirect loop
+		if r.URL.Path == "/index.html" {
 			w.Header().Set("Content-Type", "text/html")
-			log.Printf("Serving index.html from %s", staticDir)
-			http.ServeFile(w, r, staticDir+"/index.html")
+			f, err := os.Open(staticDir + "/index.html")
+			if err != nil {
+				http.Error(w, "Not found", http.StatusNotFound)
+				return
+			}
+			defer f.Close()
+			fi, _ := f.Stat()
+			http.ServeContent(w, r, "index.html", fi.ModTime(), f)
 			return
 		}
 
