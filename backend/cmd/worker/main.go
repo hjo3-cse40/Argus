@@ -83,6 +83,7 @@ func main() {
 	}
 	defer ch.Close()
 
+	//Declare the queue that we want to consume: raw_events
 	queue := "raw_events"
 	_, err = ch.QueueDeclare(
 		queue,
@@ -95,7 +96,7 @@ func main() {
 	if err != nil {
 		log.Fatal("queue declare:", err)
 	}
-
+	//Consume the queue
 	msgs, err := ch.Consume(
 		queue,
 		"",
@@ -115,10 +116,10 @@ func main() {
 
 	const maxRetries = 3
 	baseDelay := 1 * time.Second
-
+	
 	for msg := range msgs {
 		log.Printf("RECEIVED raw message: %s", string(msg.Body))
-
+		//Parse the event
 		ev, err := events.FromJSON(msg.Body)
 		if err != nil {
 			log.Printf("event parse error: %v", err)

@@ -9,6 +9,7 @@ import (
 	"argus-backend/internal/store"
 )
 
+//Default limit of last 50 notifications
 const defaultDeliveryLimit = 50
 const maxDeliveryLimit = 100
 
@@ -23,9 +24,10 @@ func NewDeliveriesHandler(st store.Store) *DeliveriesHandler {
 func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Check for filtering query parameters
+	
 	subsourceID := r.URL.Query().Get("subsource_id")
 	platformID := r.URL.Query().Get("platform_id")
+	// Check for filtering query parameters(status: success, pending, failed)
 	statusFilter := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("status"))) // US 3.8
 
 	limit := defaultDeliveryLimit
@@ -37,7 +39,7 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-
+	//Fetch deliveries from store
 	var deliveries []store.Delivery
 
 	if subsourceID != "" {
@@ -48,7 +50,7 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 		deliveries = h.Store.List()
 	}
 
-	// Filter by status if requested (US 3.8)
+	// Filter by status if requested
 	if statusFilter != "" && (statusFilter == "delivered" || statusFilter == "failed" || statusFilter == "queued") {
 		filtered := make([]store.Delivery, 0, len(deliveries))
 		for _, d := range deliveries {
@@ -63,6 +65,6 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	if len(deliveries) > limit {
 		deliveries = deliveries[:limit]
 	}
-
+	//Return JSON
 	_ = json.NewEncoder(w).Encode(deliveries)
 }

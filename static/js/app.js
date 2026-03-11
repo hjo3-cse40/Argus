@@ -135,7 +135,7 @@ function setupEventListeners() {
         if (e.target === confirmModal) closeConfirmModal();
     });
 
-    // Notification history filter by status (US 3.8)
+    // Notification history filter by status
     if (historyStatusFilter) {
         historyStatusFilter.addEventListener('change', () => loadNotificationHistory());
     }

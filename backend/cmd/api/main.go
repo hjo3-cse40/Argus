@@ -19,13 +19,13 @@ func main() {
 	}
 
 	log.Printf("Starting API in %s environment", cfg.Environment)
-
+	//Connect to MQ
 	mqClient, err := mq.Connect(cfg.RabbitMQ.URL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer mqClient.Close()
-
+	//Declare raw_events
 	if err := mqClient.DeclareQueue("raw_events"); err != nil {
 		log.Fatal(err)
 	}
@@ -38,10 +38,10 @@ func main() {
 	defer st.Close()
 
 	log.Printf("Connected to PostgreSQL database at %s:%s", cfg.Database.Host, cfg.Database.Port)
-
+	//Pass it to NewRouter
 	authService := auth.NewService(st)
 	handler := apphttp.NewRouter(mqClient, st, authService)
-
+	//Start HTTP server
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           handler,

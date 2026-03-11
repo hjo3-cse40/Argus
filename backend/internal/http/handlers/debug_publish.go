@@ -63,7 +63,7 @@ func (h *DebugPublisher) Publish(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
+	//Publish it to raw_events on RabbitMQ
 	if err := h.MQ.Publish("raw_events", body); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(map[string]any{
