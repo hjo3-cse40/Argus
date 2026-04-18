@@ -40,7 +40,7 @@ func main() {
 	log.Printf("Connected to PostgreSQL database at %s:%s", cfg.Database.Host, cfg.Database.Port)
 	//Pass it to NewRouter
 	authService := auth.NewService(st)
-	handler := apphttp.NewRouter(mqClient, st, authService)
+	handler := apphttp.WithCORS(apphttp.NewRouter(mqClient, st, authService))
 	//Start HTTP server
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

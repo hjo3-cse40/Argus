@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/lib/pq"
 
 	"argus-backend/internal/store"
 )
@@ -47,6 +50,16 @@ func (h *PlatformsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Add to store
 	if err := h.Store.AddPlatform(platform); err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "Platform already exists",
+				Details: []string{"A platform with this name already exists (names must be unique)."},
+			})
+			return
+		}
 		// Check if it's a duplicate name error
 		if strings.Contains(err.Error(), "already exists") {
 			w.Header().Set("Content-Type", "application/json")
