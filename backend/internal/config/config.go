@@ -110,7 +110,7 @@ func Load() (*Config, error) {
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
+			Port:     getEnv("DB_PORT", "5433"),
 			User:     getEnv("DB_USER", "argus"),
 			Password: getEnv("DB_PASSWORD", "argus"),
 			DBName:   getEnv("DB_NAME", "argus"),

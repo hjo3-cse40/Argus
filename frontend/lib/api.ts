@@ -215,3 +215,31 @@ export async function deleteSubsource(subsourceId: string): Promise<void> {
   if (res.ok) return;
   throw new Error(await errorMessageFromResponse(res, "Delete sub-channel failed"));
 }
+
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
+export type LoginResponse = {
+  token: string;
+};
+
+export async function login(body: LoginPayload): Promise<LoginResponse> {
+  const res = await doFetch(apiUrl("/api/login"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return readJson<LoginResponse>(res, "Login failed");
+}
+
+export async function register(body: LoginPayload): Promise<void> {
+  const res = await doFetch(apiUrl("/api/register"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 204 || res.ok) return;
+  throw new Error(await errorMessageFromResponse(res, "Registration failed"));
+}
