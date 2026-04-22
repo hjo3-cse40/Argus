@@ -30,7 +30,7 @@ func NewPostgresStore(connStr string, limit int) (*PostgresStore, error) {
 
 	// Verify connectivity
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
@@ -41,7 +41,7 @@ func NewPostgresStore(connStr string, limit int) (*PostgresStore, error) {
 
 	// Run migrations
 	if err := store.migrate(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 
@@ -81,7 +81,7 @@ func (s *PostgresStore) AddQueued(d Delivery) {
 		log.Printf("Failed to begin transaction: %v", err)
 		return
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Insert new delivery with subsource_id
 	_, err = tx.Exec(`
@@ -167,7 +167,7 @@ func (s *PostgresStore) List() []Delivery {
 		log.Printf("Failed to list deliveries: %v", err)
 		return []Delivery{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var deliveries []Delivery
 	for rows.Next() {
@@ -209,7 +209,7 @@ func (s *PostgresStore) ListDeliveriesBySubsource(subsourceID string) []Delivery
 		log.Printf("Failed to list deliveries by subsource: %v", err)
 		return []Delivery{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var deliveries []Delivery
 	for rows.Next() {
@@ -252,7 +252,7 @@ func (s *PostgresStore) ListDeliveriesByPlatform(platformID string) []Delivery {
 		log.Printf("Failed to list deliveries by platform: %v", err)
 		return []Delivery{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var deliveries []Delivery
 	for rows.Next() {
@@ -325,7 +325,7 @@ func (s *PostgresStore) ListSources() []Source {
 		log.Printf("Failed to list sources: %v", err)
 		return []Source{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sources []Source
 	for rows.Next() {
@@ -451,7 +451,7 @@ func (s *PostgresStore) ListPlatforms() []Platform {
 		log.Printf("Failed to list platforms: %v", err)
 		return []Platform{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var platforms []Platform
 	for rows.Next() {
@@ -649,7 +649,7 @@ func (s *PostgresStore) ListSubsources(platformID string) []SubsourceWithPlatfor
 		log.Printf("Failed to list subsources: %v", err)
 		return []SubsourceWithPlatform{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var subsources []SubsourceWithPlatform
 	for rows.Next() {
@@ -688,7 +688,7 @@ func (s *PostgresStore) ListAllSubsources() []SubsourceWithPlatform {
 		log.Printf("Failed to list all subsources: %v", err)
 		return []SubsourceWithPlatform{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var subsources []SubsourceWithPlatform
 	for rows.Next() {
@@ -826,7 +826,7 @@ func (s *PostgresStore) ListFilters(platformID string) []DestinationFilter {
 		log.Printf("Failed to list filters: %v", err)
 		return []DestinationFilter{}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var filters []DestinationFilter
 	for rows.Next() {

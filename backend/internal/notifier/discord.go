@@ -177,7 +177,7 @@ func SendDiscordWebhook(webhookURL string, e *events.Event) error {
 	if err != nil {
 		return fmt.Errorf("discord post: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("discord webhook failed: status=%s", resp.Status)

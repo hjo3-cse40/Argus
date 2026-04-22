@@ -411,8 +411,9 @@ func TestSubsourcesHandler_Update(t *testing.T) {
 	subsourceID := subsources[0].ID
 
 	reqBody := UpdateSubsourceRequest{
-		Name: "NBA Updated",
-		URL:  "https://youtube.com/channel/UCxxx",
+		Name:       "NBA Updated",
+		Identifier: "UCxxx",
+		URL:        "https://youtube.com/channel/UCxxx",
 	}
 	body, _ := json.Marshal(reqBody)
 

@@ -194,20 +194,9 @@ func simulateHTTPRedirectStatus(httpURL string) int {
 	return 301
 }
 
-func simulateDataStorage(dataItems []string) []string {
-	// Simulate storing data in database
-	return dataItems
-}
-
 func simulateRedeployment() {
 	// Simulate service redeployment
 	// Database and RabbitMQ are external managed services, so they persist
-}
-
-func simulateDataRetrieval() []string {
-	// Simulate retrieving data from database
-	// In property test, we assume data persists
-	return []string{"data1", "data2", "data3"}
 }
 
 func simulateEnqueueMessages(count int) int {
@@ -215,18 +204,6 @@ func simulateEnqueueMessages(count int) int {
 	return count
 }
 
-func simulateGetQueueDepth() int {
-	// Simulate getting queue depth
-	// In property test, assume messages persist
-	return 10 // Simulated persisted messages
-}
-
 func simulateCreateQueue(queueName string, durable bool) {
 	// Simulate creating a queue
-}
-
-func simulateGetQueueConfig(queueName string) (exists bool, durable bool) {
-	// Simulate getting queue configuration
-	// In real test, this would query RabbitMQ
-	return true, true // Placeholder
 }

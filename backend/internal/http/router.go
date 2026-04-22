@@ -162,7 +162,7 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 				http.Error(w, "Not found", http.StatusNotFound)
 				return
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			fi, _ := f.Stat()
 			http.ServeContent(w, r, "index.html", fi.ModTime(), f)
 			return

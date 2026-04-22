@@ -36,7 +36,7 @@ func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(ErrorResponse{
-			Error:   "Invalid platform",
+			Error:   "Platform not found",
 			Details: []string{"platform_id does not reference an existing platform"},
 		})
 		return
@@ -86,7 +86,7 @@ func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(ErrorResponse{
-				Error:   "Invalid platform",
+				Error:   "Platform not found",
 				Details: []string{"platform_id does not reference an existing platform"},
 			})
 			return

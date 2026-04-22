@@ -73,14 +73,14 @@ func addTestData(st *store.MemoryStore) {
 		DiscordWebhook: "https://discord.com/api/webhooks/123/test",
 		WebhookSecret:  "secret123",
 	}
-	st.AddPlatform(youtube)
+	_ = st.AddPlatform(youtube)
 
 	reddit := store.Platform{
 		Name:           "reddit", 
 		DiscordWebhook: "https://discord.com/api/webhooks/456/test",
 		WebhookSecret:  "secret456",
 	}
-	st.AddPlatform(reddit)
+	_ = st.AddPlatform(reddit)
 
 	log.Println("Added test platforms: youtube, reddit")
 }

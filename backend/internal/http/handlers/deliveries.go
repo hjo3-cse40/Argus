@@ -51,14 +51,18 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Filter by status if requested
-	if statusFilter != "" && (statusFilter == "delivered" || statusFilter == "failed" || statusFilter == "queued") {
-		filtered := make([]store.Delivery, 0, len(deliveries))
-		for _, d := range deliveries {
-			if strings.EqualFold(string(d.Status), statusFilter) {
-				filtered = append(filtered, d)
+	if statusFilter != "" {
+		if statusFilter == "delivered" || statusFilter == "failed" || statusFilter == "queued" {
+			filtered := make([]store.Delivery, 0, len(deliveries))
+			for _, d := range deliveries {
+				if strings.EqualFold(string(d.Status), statusFilter) {
+					filtered = append(filtered, d)
+				}
 			}
+			deliveries = filtered
+		} else {
+			deliveries = make([]store.Delivery, 0)
 		}
-		deliveries = filtered
 	}
 
 	// Apply limit (last N = first N when list is already ordered by created_at DESC)

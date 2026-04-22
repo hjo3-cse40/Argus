@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 
 	log.Printf("Connected to PostgreSQL database at %s:%s", cfg.Database.Host, cfg.Database.Port)
 	//Pass it to NewRouter

@@ -26,7 +26,7 @@ func main() {
 		log.Printf("ERROR: Migration failed: %v", err)
 		os.Exit(1)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 
 	log.Println("SUCCESS: Database migrations completed successfully")
 	os.Exit(0)

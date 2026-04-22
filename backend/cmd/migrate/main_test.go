@@ -10,12 +10,12 @@ import (
 // TestConfigurationLoading verifies the migration command can load configuration
 func TestConfigurationLoading(t *testing.T) {
 	// Set up test environment variables
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_USER", "argus")
-	os.Setenv("DB_PASSWORD", "argus")
-	os.Setenv("DB_NAME", "argus")
-	os.Setenv("ENV", "dev")
+	_ = os.Setenv("DB_HOST", "localhost")
+	_ = os.Setenv("DB_PORT", "5432")
+	_ = os.Setenv("DB_USER", "argus")
+	_ = os.Setenv("DB_PASSWORD", "argus")
+	_ = os.Setenv("DB_NAME", "argus")
+	_ = os.Setenv("ENV", "dev")
 
 	// Load configuration
 	cfg, err := config.Load()
@@ -59,24 +59,24 @@ func TestConfigurationValidation(t *testing.T) {
 		{
 			name: "valid configuration",
 			setupEnv: func() {
-				os.Setenv("DB_HOST", "localhost")
-				os.Setenv("DB_PORT", "5432")
-				os.Setenv("DB_USER", "argus")
-				os.Setenv("DB_PASSWORD", "argus")
-				os.Setenv("DB_NAME", "argus")
-				os.Setenv("ENV", "dev")
+				_ = os.Setenv("DB_HOST", "localhost")
+				_ = os.Setenv("DB_PORT", "5432")
+				_ = os.Setenv("DB_USER", "argus")
+				_ = os.Setenv("DB_PASSWORD", "argus")
+				_ = os.Setenv("DB_NAME", "argus")
+				_ = os.Setenv("ENV", "dev")
 			},
 			expectedToFail: false,
 		},
 		{
 			name: "invalid environment",
 			setupEnv: func() {
-				os.Setenv("ENV", "invalid")
-				os.Setenv("DB_HOST", "localhost")
-				os.Setenv("DB_PORT", "5432")
-				os.Setenv("DB_USER", "argus")
-				os.Setenv("DB_PASSWORD", "argus")
-				os.Setenv("DB_NAME", "argus")
+				_ = os.Setenv("ENV", "invalid")
+				_ = os.Setenv("DB_HOST", "localhost")
+				_ = os.Setenv("DB_PORT", "5432")
+				_ = os.Setenv("DB_USER", "argus")
+				_ = os.Setenv("DB_PASSWORD", "argus")
+				_ = os.Setenv("DB_NAME", "argus")
 			},
 			expectedToFail: true,
 		},
@@ -146,12 +146,12 @@ func TestConnectionStringFormat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
-			os.Setenv("DB_HOST", tt.host)
-			os.Setenv("DB_PORT", tt.port)
-			os.Setenv("DB_USER", tt.user)
-			os.Setenv("DB_PASSWORD", tt.password)
-			os.Setenv("DB_NAME", tt.dbname)
-			os.Setenv("ENV", "dev")
+			_ = os.Setenv("DB_HOST", tt.host)
+			_ = os.Setenv("DB_PORT", tt.port)
+			_ = os.Setenv("DB_USER", tt.user)
+			_ = os.Setenv("DB_PASSWORD", tt.password)
+			_ = os.Setenv("DB_NAME", tt.dbname)
+			_ = os.Setenv("ENV", "dev")
 
 			cfg, err := config.Load()
 			if err != nil {

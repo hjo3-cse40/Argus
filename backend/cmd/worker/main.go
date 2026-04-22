@@ -67,7 +67,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 
 	noti := notifier.NewNotifier(&notifierStoreAdapter{st: st})
 
@@ -75,13 +75,13 @@ func main() {
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ch, err := conn.Channel()
 	if err != nil {
 		log.Fatal("channel:", err)
 	}
-	defer ch.Close()
+	defer func() { _ = ch.Close() }()
 
 	//Declare the queue that we want to consume: raw_events
 	queue := "raw_events"
