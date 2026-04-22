@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { login } from "@/lib/api";
+import Link from "next/link";
 import "./login.css";
 
 export default function Login() {
@@ -48,9 +49,9 @@ export default function Login() {
     <div className="login-root">
       {/* LEFT PANEL */}
       <div className="panel-left">
-        <a href="/" className="panel-logo">
+        <Link href="/" className="panel-logo">
           Arg<span>u</span>s
-        </a>
+        </Link>
 
         <div className="panel-center">
           <div className="eye-mini">
@@ -134,7 +135,7 @@ export default function Login() {
         </form>
 
         <div className="form-footer">
-          <a href="/">← Back to home</a>
+          <Link href="/">← Back to home</Link>
         </div>
       </div>
     </div>

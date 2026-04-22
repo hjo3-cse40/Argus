@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argus-config
+  namespace: argus
+data:
+  ENV: "prod"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_USER: "argus"
+  DB_NAME: "argus"
+  RSSHUB_BASE_URL: "http://rsshub:1200"

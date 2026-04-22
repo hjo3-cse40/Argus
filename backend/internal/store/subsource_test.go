@@ -313,9 +313,10 @@ func TestListAllSubsources_WithPlatformName(t *testing.T) {
 	// Find platform IDs (order is alphabetical: reddit, youtube)
 	var youtubeID, redditID string
 	for _, p := range platforms {
-		if p.Name == "youtube" {
+		switch p.Name {
+		case "youtube":
 			youtubeID = p.ID
-		} else if p.Name == "reddit" {
+		case "reddit":
 			redditID = p.ID
 		}
 	}
@@ -454,9 +455,10 @@ func TestUpdateSubsource_PreventsPlatformIDChange(t *testing.T) {
 	// Find platform IDs
 	var platform1ID, platform2ID string
 	for _, p := range platforms {
-		if p.Name == "youtube" {
+		switch p.Name {
+		case "youtube":
 			platform1ID = p.ID
-		} else if p.Name == "reddit" {
+		case "reddit":
 			platform2ID = p.ID
 		}
 	}

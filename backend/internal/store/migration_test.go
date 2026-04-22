@@ -365,9 +365,10 @@ func TestMigrationUsesRepositoryURLAsIdentifier(t *testing.T) {
 	// Find subsources by name
 	var nbaSubsource, nflSubsource SubsourceWithPlatform
 	for _, subsource := range subsources {
-		if subsource.Name == "NBA YouTube" {
+		switch subsource.Name {
+		case "NBA YouTube":
 			nbaSubsource = subsource
-		} else if subsource.Name == "NFL YouTube" {
+		case "NFL YouTube":
 			nflSubsource = subsource
 		}
 	}

@@ -2,7 +2,6 @@ package deployment
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -171,23 +170,4 @@ func TestProperty_RegistryPushVerification(t *testing.T) {
 	))
 
 	properties.TestingRun(t)
-}
-
-// Helper function to check if Docker image exists locally (for integration tests)
-func imageExistsLocally(imageName string) bool {
-	cmd := exec.Command("docker", "images", "-q", imageName)
-	output, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	return len(strings.TrimSpace(string(output))) > 0
-}
-
-// Helper function to simulate checking if image is pullable
-func isImagePullable(registryPath string) bool {
-	// In a real test, this would attempt to pull the image
-	// For property testing, we verify the path format
-	return strings.Contains(registryPath, "ghcr.io/") &&
-		strings.Contains(registryPath, ":") &&
-		len(registryPath) > 0
 }

@@ -484,11 +484,7 @@ func TestProperty_PlatformDeletionCascadesToSubsources(t *testing.T) {
 
 			// Verify all subsources are deleted (cascade)
 			subsources = store.ListAllSubsources()
-			if len(subsources) != 0 {
-				return false
-			}
-
-			return true
+			return len(subsources) == 0
 		},
 		genValidPlatformName(),
 		gen.IntRange(1, 5),
