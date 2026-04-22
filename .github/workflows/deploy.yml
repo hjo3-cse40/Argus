@@ -26,10 +26,10 @@ jobs:
           SHA_TAG="sha-${{ github.event.workflow_run.head_sha }}"
           
           # Update api image to the specific sha tag
-          sed -i -E "s|image: ghcr.io/.*/argus-api:.*|image: ghcr.io/${{ github.repository }}-api:${SHA_TAG}|g" k3s/apps/api/deployment.yaml
+          sed -i -E "s|image: ghcr.io/.*/argus-api:.*|image: ghcr.io/hjo3-cse40/argus-api:${SHA_TAG}|g" k3s/apps/api/deployment.yaml
           
           # Update worker image to the specific sha tag
-          sed -i -E "s|image: ghcr.io/.*/argus-worker:.*|image: ghcr.io/${{ github.repository }}-worker:${SHA_TAG}|g" k3s/apps/worker/deployment.yaml
+          sed -i -E "s|image: ghcr.io/.*/argus-worker:.*|image: ghcr.io/hjo3-cse40/argus-worker:${SHA_TAG}|g" k3s/apps/worker/deployment.yaml
           
           echo "Updated image tags to: ${SHA_TAG}"
           echo "API:"
