@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rsshub
+  namespace: argus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rsshub
+  template:
+    metadata:
+      labels:
+        app: rsshub
+    spec:
+      containers:
+        - name: rsshub
+          image: diygod/rsshub:latest
+          ports:
+            - containerPort: 1200
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: CACHE_TYPE
+              value: memory
