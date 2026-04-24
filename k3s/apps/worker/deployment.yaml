@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/hjo3-cse40/argus-worker:sha-3dc23e8cadee057b8fa2ef23ea3056385af304ad
+          image: ghcr.io/hjo3-cse40/argus-worker:sha-706bac7eeb0447fb45da5266da48718d7fee3e9e
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
