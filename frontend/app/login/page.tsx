@@ -49,7 +49,7 @@ export default function Login() {
     <div className="login-root">
       {/* LEFT PANEL */}
       <div className="panel-left">
-        <Link href="/" className="panel-logo">
+        <Link href="/landing" className="panel-logo">
           Arg<span>u</span>s
         </Link>
 
@@ -135,7 +135,7 @@ export default function Login() {
         </form>
 
         <div className="form-footer">
-          <Link href="/">← Back to home</Link>
+          <Link href="/landing">← Back to home</Link>
         </div>
       </div>
     </div>

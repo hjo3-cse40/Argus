@@ -102,7 +102,7 @@ export default function Register() {
   return (
     <div className="register-root">
       <div className="panel-left">
-        <Link href="/" className="panel-logo">
+        <Link href="/landing" className="panel-logo">
           Arg<span>u</span>s
         </Link>
 
@@ -235,7 +235,7 @@ export default function Register() {
 
         <div className="form-footer">
           Already have an account? <Link href="/login">Sign in</Link>
-          &nbsp;·&nbsp; <Link href="/">Home</Link>
+          &nbsp;·&nbsp; <Link href="/landing">Home</Link>
         </div>
       </div>
     </div>
