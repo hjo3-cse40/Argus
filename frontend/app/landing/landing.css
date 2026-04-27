@@ -59,10 +59,18 @@ body {
 
 .nav-logo span { color: var(--amber); }
 
-.nav-links {
+.nav-center {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  margin-left: auto;
+  margin-right: 1.75rem;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .nav-link {
@@ -79,7 +87,6 @@ body {
 .nav-cta {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
   padding: 0.55rem 1.25rem;
   background: var(--ink);
   color: var(--paper);
@@ -397,7 +404,19 @@ footer a:hover { color: var(--paper); }
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
-  .nav { padding: 1rem 1.5rem; }
+  .nav {
+    padding: 1rem 1.5rem;
+    justify-content: space-between;
+  }
+  .nav-center {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-right: 0.75rem;
+  }
+  .nav-actions {
+    gap: 0.75rem;
+    margin-left: 0;
+  }
   .hero { grid-template-columns: 1fr; }
   .hero-left { padding: 4rem 1.5rem; border-right: none; border-bottom: 1px solid var(--line); }
   .hero-right { padding: 3rem 1.5rem; }

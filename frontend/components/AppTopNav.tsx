@@ -8,7 +8,7 @@ export function AppTopNav() {
       <Link href="/landing" className="app-topnav-logo">
         Arg<span>u</span>s
       </Link>
-      <div className="app-topnav-links">
+      <div className="app-topnav-center">
         <Link href="/landing" className="app-topnav-link">
           Home
         </Link>
@@ -18,11 +18,13 @@ export function AppTopNav() {
         <Link href="/platforms" className="app-topnav-link">
           Platforms
         </Link>
-        <Link href="/register" className="app-topnav-link">
-          Register
+      </div>
+      <div className="app-topnav-actions">
+        <Link href="/login" className="app-topnav-link">
+          Log in
         </Link>
-        <Link href="/login" className="app-topnav-cta">
-          <span>Sign in →</span>
+        <Link href="/register" className="app-topnav-cta">
+          <span>Get started</span>
         </Link>
       </div>
     </nav>

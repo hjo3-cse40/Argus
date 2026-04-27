@@ -61,10 +61,18 @@ body:has(.app-shell)::before {
   color: var(--amber);
 }
 
-.app-topnav-links {
+.app-topnav-center {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  margin-left: auto;
+  margin-right: 1.75rem;
+}
+
+.app-topnav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .app-topnav-link {
@@ -639,12 +647,19 @@ body:has(.app-shell)::before {
 
   .app-topnav {
     padding: 1rem 1.5rem;
+    justify-content: space-between;
   }
 
-  .app-topnav-links {
+  .app-topnav-center {
     flex-wrap: wrap;
     gap: 0.75rem;
-    justify-content: flex-end;
+    justify-content: center;
+    margin-right: 0.75rem;
+  }
+
+  .app-topnav-actions {
+    gap: 0.75rem;
+    margin-left: 0;
   }
 
   .app-main {
