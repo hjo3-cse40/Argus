@@ -337,6 +337,70 @@ h1 em {
   line-height: 1.8;
 }
 
+/* USE CASES */
+.use-cases {
+  border-top: 1px solid var(--line);
+  padding: 4rem 0 0;
+}
+
+.use-cases-kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 0 0 0.9rem;
+  text-align: center;
+}
+
+.use-cases h2 {
+  margin: 0;
+  text-align: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  letter-spacing: -0.02em;
+  padding: 0 3rem;
+}
+
+.use-cases-grid {
+  margin-top: 2.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.use-case-card {
+  padding: 2.4rem 2rem;
+  background: transparent;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.use-case-card:nth-child(3n) {
+  border-right: none;
+}
+
+.use-case-meta {
+  margin: 0 0 1rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.use-case-card h3 {
+  margin: 0 0 0.5rem;
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.use-case-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
 /* CTA BAND */
 .cta-band {
   border-top: 1px solid var(--line);
@@ -422,6 +486,16 @@ footer a:hover { color: var(--paper); }
   .hero-right { padding: 3rem 1.5rem; }
   .features { grid-template-columns: 1fr; }
   .feature { border-right: none; border-bottom: 1px solid var(--line); }
+  .use-cases {
+    padding: 3rem 0 0;
+  }
+  .use-cases h2 {
+    padding: 0 1.5rem;
+  }
+  .use-cases-grid {
+    grid-template-columns: 1fr;
+  }
+  .use-case-card { border-right: none; }
   .cta-band { flex-direction: column; gap: 2rem; align-items: flex-start; }
   .btn-amber { margin-left: 0; }
   footer { flex-direction: column; gap: 0.5rem; text-align: center; }

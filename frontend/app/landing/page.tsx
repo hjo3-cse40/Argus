@@ -97,6 +97,61 @@ export default function Landing() {
           </div>
         </section>
 
+        <section className="use-cases" id="use-cases">
+          <p className="use-cases-kicker">Use cases</p>
+          <h2>What you can do with Argus</h2>
+          <div className="use-cases-grid">
+            <article className="use-case-card">
+              <div className="use-case-meta">📡 Monitoring</div>
+              <h3>Creator monitoring</h3>
+              <p>
+                Track channels and accounts from multiple platforms and get alerts
+                as soon as new content appears.
+              </p>
+            </article>
+            <article className="use-case-card">
+              <div className="use-case-meta">🧭 Strategy</div>
+              <h3>Competitor watch</h3>
+              <p>
+                Follow competitor activity in one dashboard and route critical
+                updates directly to your team&apos;s Discord channels.
+              </p>
+            </article>
+            <article className="use-case-card">
+              <div className="use-case-meta">🚨 Alerts</div>
+              <h3>Incident response</h3>
+              <p>
+                Monitor keywords and high-priority sources to detect incidents
+                early and respond before they escalate.
+              </p>
+            </article>
+            <article className="use-case-card">
+              <div className="use-case-meta">💬 Community</div>
+              <h3>Community ops</h3>
+              <p>
+                Keep moderators informed with real-time notifications from Reddit,
+                X, and YouTube without manual checking.
+              </p>
+            </article>
+            <article className="use-case-card">
+              <div className="use-case-meta">📈 Growth</div>
+              <h3>Campaign tracking</h3>
+              <p>
+                Watch campaign mentions across platforms and verify what was
+                delivered, when, and to which destination.
+              </p>
+            </article>
+            <article className="use-case-card">
+              <div className="use-case-meta">🗂️ Insights</div>
+              <h3>Audit and reporting</h3>
+              <p>
+                Review delivery history by source and status to understand signal
+                quality and improve routing rules over time.
+              </p>
+            </article>
+          </div>
+        </section>
+
         <div className="cta-band">
           <h2>
             Start watching
