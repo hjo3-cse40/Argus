@@ -340,7 +340,7 @@ h1 em {
 /* USE CASES */
 .use-cases {
   border-top: 1px solid var(--line);
-  padding: 4rem 0 0;
+  padding: 2.2rem 0 0;
 }
 
 .use-cases-kicker {
@@ -362,14 +362,14 @@ h1 em {
 }
 
 .use-cases-grid {
-  margin-top: 2.5rem;
+  margin-top: 1.9rem;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--line);
 }
 
 .use-case-card {
-  padding: 2.4rem 2rem;
+  padding: 1.85rem 1.7rem;
   background: transparent;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -401,15 +401,91 @@ h1 em {
   line-height: 1.8;
 }
 
+/* FAQ */
+.faq {
+  border-top: 1px solid var(--line);
+  padding: 2.2rem 0 0;
+}
+
+.faq-kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 0 0 0.9rem;
+  text-align: center;
+}
+
+.faq h2 {
+  margin: 0;
+  text-align: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+  letter-spacing: -0.02em;
+  padding: 0 3rem;
+}
+
+.faq-list {
+  margin-top: 1.7rem;
+  border-top: 1px solid var(--line);
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--line);
+  padding: 0 3rem;
+}
+
+.faq-item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.82rem 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  color: var(--amber);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.faq-item[open] summary::after {
+  content: "−";
+}
+
+.faq-item p {
+  margin: 0 0 0.9rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.75;
+  max-width: 75ch;
+}
+
 /* CTA BAND */
 .cta-band {
-  border-top: 1px solid var(--line);
-  background: var(--ink);
+  border-top: 1px solid rgba(10, 10, 15, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(34, 31, 38, 0.96) 0%,
+    rgba(20, 18, 24, 1) 26%,
+    var(--ink) 100%
+  );
   color: var(--paper);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4rem 3rem;
+  padding: 4.5rem 3rem 4rem;
 }
 
 .cta-band h2 {
@@ -496,6 +572,15 @@ footer a:hover { color: var(--paper); }
     grid-template-columns: 1fr;
   }
   .use-case-card { border-right: none; }
+  .faq {
+    padding: 3rem 0 0;
+  }
+  .faq h2 {
+    padding: 0 1.5rem;
+  }
+  .faq-item {
+    padding: 0 1.5rem;
+  }
   .cta-band { flex-direction: column; gap: 2rem; align-items: flex-start; }
   .btn-amber { margin-left: 0; }
   footer { flex-direction: column; gap: 0.5rem; text-align: center; }

@@ -152,6 +152,55 @@ export default function Landing() {
           </div>
         </section>
 
+        <section className="faq" id="faq">
+          <p className="faq-kicker">FAQ</p>
+          <h2>Common questions</h2>
+          <div className="faq-list">
+            <details className="faq-item">
+              <summary>What is Argus and who is it for?</summary>
+              <p>
+                Argus is a monitoring and routing platform for teams that need
+                fast visibility on social and community signals. It is built for
+                creators, community ops, growth, and incident response workflows.
+              </p>
+            </details>
+            <details className="faq-item">
+              <summary>Which platforms can I monitor right now?</summary>
+              <p>
+                Argus currently supports YouTube, Reddit, and X as core sources.
+                You can organize each platform into multiple subsources to match
+                your team&apos;s structure.
+              </p>
+            </details>
+            <details className="faq-item">
+              <summary>How does Discord delivery work?</summary>
+              <p>
+                Add your Discord webhook URL, choose which sources you want to
+                track, and Argus sends new updates to your channel automatically.
+                You can then check delivery history to confirm everything arrived.
+              </p>
+            </details>
+            <details className="faq-item">
+              <summary>
+                Can I route different sources to different Discord channels?
+              </summary>
+              <p>
+                Yes. Different platform sources can be mapped to different
+                webhook destinations, so each channel receives only relevant
+                events.
+              </p>
+            </details>
+            <details className="faq-item">
+              <summary>How do I add or remove sources/subsources?</summary>
+              <p>
+                Use the dashboard and platforms views to create, update, or
+                remove sources and nested subsources. Changes take effect in the
+                collection and routing flow once saved.
+              </p>
+            </details>
+          </div>
+        </section>
+
         <div className="cta-band">
           <h2>
             Start watching
