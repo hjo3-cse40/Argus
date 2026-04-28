@@ -164,11 +164,12 @@ func TestProperty_LogRetentionDuration(t *testing.T) {
 				return true // Skip invalid ranges
 			}
 
-			// Simulate log creation
-			logTimestamp := time.Now().Add(-time.Duration(daysElapsed) * 24 * time.Hour)
+			// Use one clock reading so the boundary at exactly 30 days is not
+			// flaky (two time.Now() calls can be milliseconds apart on CI).
+			now := time.Now()
+			logTimestamp := now.Add(-time.Duration(daysElapsed) * 24 * time.Hour)
 
-			// Check if logs are still accessible
-			isAccessible := simulateLogAccessibility(logTimestamp)
+			isAccessible := simulateLogAccessibility(logTimestamp, now)
 
 			// Logs should be accessible for at least 30 days
 			if daysElapsed <= 30 {
@@ -347,10 +348,10 @@ func simulateLogWithTimestamp(logEntry string) string {
 	return fmt.Sprintf("%s %s", time.Now().Format("2006-01-02 15:04:05 UTC"), logEntry)
 }
 
-func simulateLogAccessibility(logTimestamp time.Time) bool {
-	// Logs are accessible if within retention period
-	daysOld := time.Since(logTimestamp).Hours() / 24
-	return daysOld <= 30
+func simulateLogAccessibility(logTimestamp, asOf time.Time) bool {
+	// Logs are accessible if within retention period (asOf must match the
+	// same instant used to derive logTimestamp for stable boundaries).
+	return !asOf.Before(logTimestamp) && asOf.Sub(logTimestamp) <= 30*24*time.Hour
 }
 
 func simulateDeploymentWithFailure(failureType string) bool {
