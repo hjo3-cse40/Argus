@@ -13,6 +13,21 @@ export type DestinationFilter = {
   created_at: string;
 };
 
+export type DeliveryStatus = "queued" | "delivered" | "failed";
+
+export type Delivery = {
+  event_id: string;
+  source: string;
+  title: string;
+  url: string;
+  status: DeliveryStatus;
+  subsource_id?: string;
+  created_at: string;
+  updated_at: string;
+  retry_count: number;
+  last_error?: string;
+};
+
 /**
  * All browser requests go to same-origin `/api/...`, which the Next.js route
  * `app/api/[...path]/route.ts` proxies to Go (`API_UPSTREAM`, default http://127.0.0.1:8080).
@@ -117,6 +132,32 @@ export async function fetchPlatforms(): Promise<Platform[]> {
     throw new Error("Load platforms failed: server did not return a JSON array");
   }
   return data as Platform[];
+}
+
+export type FetchDeliveriesOptions = {
+  status?: DeliveryStatus;
+  limit?: number;
+  offset?: number;
+};
+
+export async function fetchDeliveries(
+  options: FetchDeliveriesOptions = {}
+): Promise<Delivery[]> {
+  const params = new URLSearchParams();
+  if (options.status) params.set("status", options.status);
+  if (options.limit && options.limit > 0) params.set("limit", String(options.limit));
+  if (typeof options.offset === "number" && options.offset >= 0) {
+    params.set("offset", String(options.offset));
+  }
+
+  const query = params.toString();
+  const path = query ? `/api/deliveries?${query}` : "/api/deliveries";
+  const res = await doFetch(apiUrl(path));
+  const data = await readJson<unknown>(res, "Load deliveries failed");
+  if (!Array.isArray(data)) {
+    throw new Error("Load deliveries failed: server did not return a JSON array");
+  }
+  return data as Delivery[];
 }
 
 export async function fetchFilters(platformId: string): Promise<DestinationFilter[]> {

@@ -39,6 +39,12 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
 	//Fetch deliveries from store
 	var deliveries []store.Delivery
 
@@ -65,9 +71,14 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Apply limit (last N = first N when list is already ordered by created_at DESC)
-	if len(deliveries) > limit {
-		deliveries = deliveries[:limit]
+	// Apply offset + limit when list is ordered by created_at DESC
+	if offset >= len(deliveries) {
+		deliveries = make([]store.Delivery, 0)
+	} else {
+		deliveries = deliveries[offset:]
+		if len(deliveries) > limit {
+			deliveries = deliveries[:limit]
+		}
 	}
 	//Return JSON
 	_ = json.NewEncoder(w).Encode(deliveries)

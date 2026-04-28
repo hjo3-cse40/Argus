@@ -25,8 +25,12 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 
 	dh := handlers.NewDeliveriesHandler(st)
 	mux.HandleFunc("GET /deliveries", dh.List)
+	mux.HandleFunc("GET /api/deliveries", dh.List)
+	broadcaster := handlers.NewDeliveryBroadcaster()
+	stream := handlers.NewDeliveriesStreamHandler(broadcaster)
+	mux.HandleFunc("GET /api/deliveries/stream", stream.Stream)
 
-	mark := handlers.NewMarkDeliveredHandler(st)
+	mark := handlers.NewMarkDeliveredHandler(st, broadcaster)
 	mux.HandleFunc("POST /debug/delivered", mark.Mark)
 
 	markFailed := handlers.NewMarkFailedHandler(st)

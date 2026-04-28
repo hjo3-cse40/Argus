@@ -429,6 +429,11 @@ body:has(.app-shell)::before {
   display: block;
 }
 
+.app-stat-val-compact {
+  font-size: clamp(1.4rem, 2vw, 1.75rem);
+  white-space: nowrap;
+}
+
 .app-stat-label {
   font-size: 0.68rem;
   letter-spacing: 0.1em;
@@ -624,6 +629,151 @@ body:has(.app-shell)::before {
   margin-bottom: 0.35rem;
 }
 
+.app-notifications-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.app-notification-card {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.app-notification-card h3 {
+  margin: 0;
+  font-family: "DM Serif Display", serif;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.app-notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-notification-source {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.app-notification-pill {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: rgba(212, 130, 10, 0.2);
+  border: 1px solid rgba(212, 130, 10, 0.45);
+  padding: 0.15rem 0.4rem;
+}
+
+.app-pagination {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-pagination-indicator {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  min-width: 5.25rem;
+  text-align: center;
+}
+
+.app-toast-region {
+  position: fixed;
+  top: 0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, calc(100vw - 1.5rem));
+  z-index: 350;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.app-toast {
+  pointer-events: auto;
+  border: 1px solid var(--line);
+  background: rgba(242, 240, 235, 0.82);
+  backdrop-filter: blur(13px);
+  box-shadow: 0 12px 25px rgba(10, 10, 15, 0.14);
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  animation: app-toast-in 260ms ease-out;
+}
+
+.app-toast-success {
+  border-color: rgba(212, 130, 10, 0.45);
+}
+
+.app-toast-error {
+  border-color: rgba(192, 57, 43, 0.5);
+}
+
+.app-toast-body {
+  min-width: 0;
+}
+
+.app-toast-title {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.app-toast-message {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-toast-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.app-toast-close:hover {
+  color: var(--ink);
+}
+
+@keyframes app-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 900px) {
   .app-body {
     flex-direction: column;
@@ -668,5 +818,9 @@ body:has(.app-shell)::before {
 
   .app-main-header {
     flex-direction: column;
+  }
+
+  .app-notifications-list {
+    grid-template-columns: 1fr;
   }
 }

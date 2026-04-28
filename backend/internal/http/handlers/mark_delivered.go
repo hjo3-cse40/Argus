@@ -8,11 +8,12 @@ import (
 )
 
 type MarkDeliveredHandler struct {
-	Store store.Store
+	Store       store.Store
+	Broadcaster *DeliveryBroadcaster
 }
 
-func NewMarkDeliveredHandler(st store.Store) *MarkDeliveredHandler {
-	return &MarkDeliveredHandler{Store: st}
+func NewMarkDeliveredHandler(st store.Store, broadcaster *DeliveryBroadcaster) *MarkDeliveredHandler {
+	return &MarkDeliveredHandler{Store: st, Broadcaster: broadcaster}
 }
 
 func (h *MarkDeliveredHandler) Mark(w http.ResponseWriter, r *http.Request) {
@@ -26,5 +27,15 @@ func (h *MarkDeliveredHandler) Mark(w http.ResponseWriter, r *http.Request) {
 	}
 
 	found := h.Store.MarkDelivered(body.EventID)
+
+	if found && h.Broadcaster != nil {
+		for _, d := range h.Store.List() {
+			if d.EventID == body.EventID && d.Status == store.StatusDelivered {
+				h.Broadcaster.Publish(d)
+				break
+			}
+		}
+	}
+
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "found": found})
 }
