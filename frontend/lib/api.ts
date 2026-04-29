@@ -138,6 +138,8 @@ export type FetchDeliveriesOptions = {
   status?: DeliveryStatus;
   limit?: number;
   offset?: number;
+  platformId?: string;
+  subsourceId?: string;
 };
 
 export async function fetchDeliveries(
@@ -149,6 +151,8 @@ export async function fetchDeliveries(
   if (typeof options.offset === "number" && options.offset >= 0) {
     params.set("offset", String(options.offset));
   }
+  if (options.platformId) params.set("platform_id", options.platformId);
+  if (options.subsourceId) params.set("subsource_id", options.subsourceId);
 
   const query = params.toString();
   const path = query ? `/api/deliveries?${query}` : "/api/deliveries";

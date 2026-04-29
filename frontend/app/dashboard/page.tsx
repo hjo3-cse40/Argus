@@ -6,19 +6,42 @@ import { AppTopNav } from "@/components/AppTopNav";
 import {
   createFilter,
   deleteFilter,
+  fetchDeliveries,
   fetchFilters,
   fetchPlatforms,
+  type Delivery,
   type DestinationFilter,
   type Platform,
 } from "@/lib/api";
 import "../app-shell.css";
+
+type DashboardPost = {
+  id: string;
+  title: string;
+  url?: string;
+  updatedAt?: string;
+};
+
+function formatRelativeTime(iso?: string): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const seconds = Math.max(1, Math.floor((now - then) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 function PlatformSection({
   title,
   posts,
 }: {
   title: string;
-  posts: { id: number; title: string }[];
+  posts: DashboardPost[];
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -54,31 +77,35 @@ function PlatformSection({
         </div>
       </div>
       <div ref={scrollRef} className="app-row-scroll">
-        {posts.map((post) => (
-          <div key={post.id} className="app-post-card">
-            {post.title}
-          </div>
-        ))}
+        {posts.length === 0 ? (
+          <p className="app-muted">No delivered notifications yet.</p>
+        ) : (
+          posts.map((post) => (
+            <div key={post.id} className="app-post-card">
+              <p style={{ margin: 0 }}>{post.title}</p>
+              {post.updatedAt ? (
+                <p className="app-muted" style={{ margin: "0.4rem 0 0", fontSize: "0.72rem" }}>
+                  {formatRelativeTime(post.updatedAt)}
+                </p>
+              ) : null}
+              {post.url ? (
+                <a
+                  href={post.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="app-link-quiet"
+                  style={{ marginTop: "0.5rem", alignSelf: "flex-start" }}
+                >
+                  Open
+                </a>
+              ) : null}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
-
-const demoPosts = {
-  youtube: [
-    { id: 1, title: "NBA Shorts - Best Dunks" },
-    { id: 2, title: "Full Game Highlights Lakers vs Celtics" },
-    { id: 3, title: "Top 10 Plays of the Week" },
-  ],
-  reddit: [
-    { id: 4, title: "Reddit: Lakers discussion thread" },
-    { id: 5, title: "Reddit: Best NBA plays debate" },
-  ],
-  twitter: [
-    { id: 6, title: "LeBron tweet reaction" },
-    { id: 7, title: "NBA trending hashtag" },
-  ],
-};
 
 export default function Dashboard() {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
@@ -94,6 +121,13 @@ export default function Dashboard() {
   const [includeInput, setIncludeInput] = useState("");
   const [excludeInput, setExcludeInput] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deliveryGroups, setDeliveryGroups] = useState<{
+    youtube: DashboardPost[];
+    reddit: DashboardPost[];
+    x: DashboardPost[];
+  }>({ youtube: [], reddit: [], x: [] });
+  const [deliveriesLoading, setDeliveriesLoading] = useState(true);
+  const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
 
   const reloadFilters = useCallback(async (platformId: string) => {
     if (!platformId) {
@@ -207,8 +241,83 @@ export default function Dashboard() {
     }
   };
 
-  const demoTotal =
-    demoPosts.youtube.length + demoPosts.reddit.length + demoPosts.twitter.length;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setDeliveriesLoading(true);
+      setDeliveriesError(null);
+      try {
+        const delivered = await fetchDeliveries({
+          status: "delivered",
+          limit: 100,
+        });
+        const next = {
+          youtube: [],
+          reddit: [],
+          x: [],
+        } as {
+          youtube: DashboardPost[];
+          reddit: DashboardPost[];
+          x: DashboardPost[];
+        };
+        for (const d of delivered) {
+          const source = d.source === "twitter" ? "x" : d.source;
+          if (source !== "youtube" && source !== "reddit" && source !== "x") continue;
+          const group = next[source];
+          if (group.length >= 15) continue;
+          if (group.some((item) => item.id === d.event_id)) continue;
+          group.push({
+            id: d.event_id,
+            title: d.title || "(untitled)",
+            url: d.url,
+            updatedAt: d.updated_at,
+          });
+        }
+        if (!cancelled) setDeliveryGroups(next);
+      } catch (e) {
+        if (!cancelled) {
+          setDeliveriesError(e instanceof Error ? e.message : "Failed to load notifications");
+          setDeliveryGroups({ youtube: [], reddit: [], x: [] });
+        }
+      } finally {
+        if (!cancelled) setDeliveriesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [platforms]);
+
+  useEffect(() => {
+    const es = new EventSource("/api/deliveries/stream");
+    es.addEventListener("delivered", (evt) => {
+      try {
+        const incoming = JSON.parse((evt as MessageEvent).data) as Delivery;
+        const source = incoming.source === "twitter" ? "x" : incoming.source;
+        if (source !== "youtube" && source !== "reddit" && source !== "x") return;
+        setDeliveryGroups((prev) => {
+          const current = prev[source];
+          if (current.some((item) => item.id === incoming.event_id)) return prev;
+          const nextList = [
+            {
+              id: incoming.event_id,
+              title: incoming.title || "(untitled)",
+              url: incoming.url,
+              updatedAt: incoming.updated_at,
+            },
+            ...current,
+          ].slice(0, 15);
+          return { ...prev, [source]: nextList };
+        });
+      } catch {
+        // ignore malformed payloads
+      }
+    });
+    return () => es.close();
+  }, []);
+
+  const deliveredTotal =
+    deliveryGroups.youtube.length + deliveryGroups.reddit.length + deliveryGroups.x.length;
 
   const noPlatforms = !platformsLoading && platforms.length === 0 && !platformsError;
 
@@ -378,8 +487,8 @@ export default function Dashboard() {
 
           <div className="app-stat-grid">
             <div className="app-stat">
-              <span className="app-stat-val">{demoTotal}</span>
-              <div className="app-stat-label">Demo posts</div>
+              <span className="app-stat-val">{deliveredTotal}</span>
+              <div className="app-stat-label">Delivered shown</div>
             </div>
             <div className="app-stat">
               <span className="app-stat-val">
@@ -388,14 +497,14 @@ export default function Dashboard() {
               <div className="app-stat-label">Active filters</div>
             </div>
             <div className="app-stat">
-              <span className="app-stat-val">{demoTotal}</span>
-              <div className="app-stat-label">Matches</div>
+              <span className="app-stat-val">{deliveriesLoading ? "…" : "live"}</span>
+              <div className="app-stat-label">Notification feed</div>
             </div>
           </div>
-
-          <PlatformSection title="youtube" posts={demoPosts.youtube} />
-          <PlatformSection title="reddit" posts={demoPosts.reddit} />
-          <PlatformSection title="twitter" posts={demoPosts.twitter} />
+          {deliveriesError ? <p className="app-error">{deliveriesError}</p> : null}
+          <PlatformSection title="youtube" posts={deliveryGroups.youtube} />
+          <PlatformSection title="reddit" posts={deliveryGroups.reddit} />
+          <PlatformSection title="twitter" posts={deliveryGroups.x} />
         </main>
       </div>
     </div>

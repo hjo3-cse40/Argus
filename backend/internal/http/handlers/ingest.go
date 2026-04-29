@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"argus-backend/internal/events"
+	"argus-backend/internal/filter"
 	"argus-backend/internal/mq"
 	"argus-backend/internal/store"
 )
@@ -90,6 +91,25 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 	var subsourceID *string
 	if sid, ok := ev.Metadata["subsource_id"].(string); ok && sid != "" {
 		subsourceID = &sid
+	}
+
+	// If the event is tied to a known subsource/platform, evaluate keyword filters
+	// before enqueueing so blocked events can be reported immediately to the caller.
+	if subsourceID != nil {
+		if subsource, found := h.Store.GetSubsource(*subsourceID); found {
+			filters := h.Store.ListFilters(subsource.PlatformID)
+			if pass, reason := filter.EvaluateWithReason(&ev, filters); !pass {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"ok":       false,
+					"blocked":  true,
+					"event_id": ev.EventID,
+					"reason":   reason,
+				})
+				return
+			}
+		}
 	}
 
 	h.Store.AddQueued(store.Delivery{
