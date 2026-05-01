@@ -36,8 +36,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const result = await login({ email, password });
-      localStorage.setItem("token", result.token);
+      await login({ email, password });
       window.location.href = "/dashboard";
     } catch (err) {
       setLoading(false);
