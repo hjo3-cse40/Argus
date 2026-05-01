@@ -74,5 +74,27 @@ services:
       - api
     restart: unless-stopped
 
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    command: ["./worker"]
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: argus
+      DB_PASSWORD: argus
+      DB_NAME: argus
+      RABBITMQ_URL: amqp://argus:argus@rabbitmq:5672/
+      API_BASE_URL: http://api:8080
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
     pgdata:

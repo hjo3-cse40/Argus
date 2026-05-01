@@ -126,7 +126,7 @@ export default function Register() {
           </ul>
         </div>
 
-        <div className="panel-footer">© 2024 Argus</div>
+        <div className="panel-footer">© 2026 Argus</div>
       </div>
 
       <div className="panel-right">
