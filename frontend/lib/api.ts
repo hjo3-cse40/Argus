@@ -79,7 +79,7 @@ async function readJson<T>(res: Response, fallback: string): Promise<T> {
 
 async function doFetch(input: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(input, { ...init, credentials: "include" });
+    return await fetch(input, init);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
     throw new Error(
@@ -266,23 +266,23 @@ export type LoginPayload = {
   password: string;
 };
 
-export async function login(body: LoginPayload): Promise<void> {
-  const res = await doFetch(apiUrl("/api/auth/login"), {
+export type LoginResponse = {
+  token: string;
+};
+
+export async function login(body: LoginPayload): Promise<LoginResponse> {
+  const res = await doFetch(apiUrl("/api/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(await errorMessageFromResponse(res, "Login failed"));
-  }
+  return readJson<LoginResponse>(res, "Login failed");
 }
 
 export async function register(body: LoginPayload): Promise<void> {
-  const res = await doFetch(apiUrl("/api/auth/register"), {
+  const res = await doFetch(apiUrl("/api/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify(body),
   });
   if (res.status === 204 || res.ok) return;
