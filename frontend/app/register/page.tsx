@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { register } from "@/lib/api";
 import Link from "next/link";
 import "./register.css";
 
@@ -63,35 +64,18 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (res.ok) {
-        setSuccessBanner(true);
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1800);
-        return;
-      }
-
-      if (res.status === 409) {
+      await register({ email, password });
+      setSuccessBanner(true);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1800);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Server error. Please try again.";
+      if (msg.includes("409") || msg.toLowerCase().includes("already registered")) {
         setErrors({ email: "This email is already registered." });
-        return;
+      } else {
+        setErrorBanner(msg);
       }
-
-      if (res.status === 400) {
-        const data = await res.json().catch(() => ({}));
-        const detail = data.details?.[0] || data.error || "Validation failed.";
-        setErrorBanner(detail);
-        return;
-      }
-
-      setErrorBanner("Server error. Please try again in a moment.");
-    } catch {
-      setErrorBanner("Cannot reach the server. Check your connection.");
     } finally {
       setLoading(false);
     }
