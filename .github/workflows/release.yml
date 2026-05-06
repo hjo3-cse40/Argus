@@ -46,15 +46,6 @@ jobs:
             type=raw,value=sha-${{ github.event.workflow_run.head_sha }}
             type=raw,value=latest
 
-      - name: Extract metadata for Worker image
-        id: meta-worker
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-worker
-          tags: |
-            type=raw,value=sha-${{ github.event.workflow_run.head_sha }}
-            type=raw,value=latest
-
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
@@ -62,16 +53,6 @@ jobs:
           file: backend/Dockerfile
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push Worker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: backend/Dockerfile.worker
-          push: true
-          tags: ${{ steps.meta-worker.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
