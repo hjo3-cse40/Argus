@@ -28,7 +28,7 @@ const dmSerif = DM_Serif_Display({
 
 export const metadata: Metadata = {
   title: "Argus",
-  description: "Always watching. Never missing.",
+  description: "Always watching. Never missing",
 };
 
 export default function RootLayout({
