@@ -5,6 +5,7 @@ metadata:
   namespace: argus
   annotations:
     kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
     - host: argus.masondrake.dev
