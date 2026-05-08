@@ -53,8 +53,9 @@ var migrations = []string{
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 	)`,
 
-	// Create unique index on platforms.name to prevent duplicate platform names
-	`CREATE UNIQUE INDEX IF NOT EXISTS idx_platforms_name ON platforms(name)`,
+	// Global unique on name is enforced by CREATE TABLE above for brand-new DBs.
+	// Do not add a separate idx_platforms_name here: migrations replay on every startup,
+	// and after per-user platforms we DROP that index — recreating it would fail on duplicate names.
 
 	// Create subsources table
 	`CREATE TABLE IF NOT EXISTS subsources (
