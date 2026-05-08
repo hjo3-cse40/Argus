@@ -36,9 +36,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const result = await login({ email, password });
-      localStorage.setItem("token", result.token);
-      window.location.href = "/dashboard";
+      await login({ email, password });
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("next");
+      window.location.href =
+        next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
     } catch (err) {
       setLoading(false);
       setBannerError(err instanceof Error ? err.message : "Invalid email or password.");

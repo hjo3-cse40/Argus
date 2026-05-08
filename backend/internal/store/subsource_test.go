@@ -8,18 +8,19 @@ import (
 // Test AddSubsource creates subsource and returns no error
 func TestAddSubsource_Success(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform first
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
@@ -33,7 +34,7 @@ func TestAddSubsource_Success(t *testing.T) {
 		URL:        "https://youtube.com/channel/UCxxx",
 	}
 
-	err = store.AddSubsource(subsource)
+	err = store.AddSubsource(owner, subsource)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -68,18 +69,19 @@ func TestAddSubsource_Success(t *testing.T) {
 // Note: MemoryStore doesn't enforce uniqueness, but PostgreSQL will
 func TestAddSubsource_DuplicateIdentifier(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	platformID := platforms[0].ID
 
 	// Create first subsource
@@ -88,7 +90,7 @@ func TestAddSubsource_DuplicateIdentifier(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource1)
+	err = store.AddSubsource(owner, subsource1)
 	if err != nil {
 		t.Fatalf("First AddSubsource failed: %v", err)
 	}
@@ -99,7 +101,7 @@ func TestAddSubsource_DuplicateIdentifier(t *testing.T) {
 		Name:       "NFL",
 		Identifier: "UCxxx", // Duplicate identifier
 	}
-	err = store.AddSubsource(subsource2)
+	err = store.AddSubsource(owner, subsource2)
 	if err == nil {
 		t.Fatal("Second AddSubsource should have failed due to duplicate identifier")
 	}
@@ -119,6 +121,7 @@ func TestAddSubsource_DuplicateIdentifier(t *testing.T) {
 // Test AddSubsource with non-existent platform_id returns error (conceptual for MemoryStore)
 func TestAddSubsource_NonExistentPlatform(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create subsource with non-existent platform_id
 	subsource := Subsource{
@@ -127,7 +130,7 @@ func TestAddSubsource_NonExistentPlatform(t *testing.T) {
 		Identifier: "UCxxx",
 	}
 
-	err := store.AddSubsource(subsource)
+	err := store.AddSubsource(owner, subsource)
 	if err == nil {
 		t.Fatal("AddSubsource should have failed due to non-existent platform_id")
 	}
@@ -147,18 +150,19 @@ func TestAddSubsource_NonExistentPlatform(t *testing.T) {
 // Test AddSubsource auto-generates URL when not provided
 func TestAddSubsource_AutoGeneratesURL(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	platformID := platforms[0].ID
 
 	// Create subsource without URL
@@ -169,7 +173,7 @@ func TestAddSubsource_AutoGeneratesURL(t *testing.T) {
 		URL:        "", // No URL provided
 	}
 
-	err = store.AddSubsource(subsource)
+	err = store.AddSubsource(owner, subsource)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -191,18 +195,19 @@ func TestAddSubsource_AutoGeneratesURL(t *testing.T) {
 // Test AddSubsource preserves URL when provided
 func TestAddSubsource_PreservesURL(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	platformID := platforms[0].ID
 
 	// Create subsource with explicit URL
@@ -214,7 +219,7 @@ func TestAddSubsource_PreservesURL(t *testing.T) {
 		URL:        customURL,
 	}
 
-	err = store.AddSubsource(subsource)
+	err = store.AddSubsource(owner, subsource)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -233,18 +238,19 @@ func TestAddSubsource_PreservesURL(t *testing.T) {
 // Test ListSubsources returns subsources for platform with platform_name
 func TestListSubsources_WithPlatformName(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	platformID := platforms[0].ID
 
 	// Create subsources
@@ -253,7 +259,7 @@ func TestListSubsources_WithPlatformName(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource1)
+	err = store.AddSubsource(owner, subsource1)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -263,13 +269,13 @@ func TestListSubsources_WithPlatformName(t *testing.T) {
 		Name:       "NFL",
 		Identifier: "UCyyy",
 	}
-	err = store.AddSubsource(subsource2)
+	err = store.AddSubsource(owner, subsource2)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
 
 	// List subsources for platform
-	subsources := store.ListSubsources(platformID)
+	subsources := store.ListSubsources(owner, platformID)
 	if len(subsources) != 2 {
 		t.Fatalf("Expected 2 subsources, got %d", len(subsources))
 	}
@@ -285,13 +291,14 @@ func TestListSubsources_WithPlatformName(t *testing.T) {
 // Test ListAllSubsources returns all subsources with platform_name
 func TestListAllSubsources_WithPlatformName(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create two platforms
 	platform1 := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test1",
 	}
-	err := store.AddPlatform(platform1)
+	err := store.AddPlatform(owner, platform1)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
@@ -300,12 +307,12 @@ func TestListAllSubsources_WithPlatformName(t *testing.T) {
 		Name:           "reddit",
 		DiscordWebhook: "https://discord.com/api/webhooks/test2",
 	}
-	err = store.AddPlatform(platform2)
+	err = store.AddPlatform(owner, platform2)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 2 {
 		t.Fatalf("Expected 2 platforms, got %d", len(platforms))
 	}
@@ -327,7 +334,7 @@ func TestListAllSubsources_WithPlatformName(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource1)
+	err = store.AddSubsource(owner, subsource1)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -337,7 +344,7 @@ func TestListAllSubsources_WithPlatformName(t *testing.T) {
 		Name:       "nba",
 		Identifier: "nba",
 	}
-	err = store.AddSubsource(subsource2)
+	err = store.AddSubsource(owner, subsource2)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -366,18 +373,19 @@ func TestListAllSubsources_WithPlatformName(t *testing.T) {
 // Test GetSubsource retrieves correct subsource with platform_name
 func TestGetSubsource_WithPlatformName(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	platformID := platforms[0].ID
 
 	// Create subsource
@@ -386,7 +394,7 @@ func TestGetSubsource_WithPlatformName(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource)
+	err = store.AddSubsource(owner, subsource)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -427,13 +435,14 @@ func TestGetSubsource_NotFound(t *testing.T) {
 // Test UpdateSubsource modifies name but prevents platform_id change
 func TestUpdateSubsource_PreventsPlatformIDChange(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create two platforms
 	platform1 := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test1",
 	}
-	err := store.AddPlatform(platform1)
+	err := store.AddPlatform(owner, platform1)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
@@ -442,12 +451,12 @@ func TestUpdateSubsource_PreventsPlatformIDChange(t *testing.T) {
 		Name:           "reddit",
 		DiscordWebhook: "https://discord.com/api/webhooks/test2",
 	}
-	err = store.AddPlatform(platform2)
+	err = store.AddPlatform(owner, platform2)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 2 {
 		t.Fatalf("Expected 2 platforms, got %d", len(platforms))
 	}
@@ -469,7 +478,7 @@ func TestUpdateSubsource_PreventsPlatformIDChange(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource)
+	err = store.AddSubsource(owner, subsource)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -487,7 +496,7 @@ func TestUpdateSubsource_PreventsPlatformIDChange(t *testing.T) {
 		Name:       "Updated NBA",
 		Identifier: "UCyyy",
 	}
-	err = store.UpdateSubsource(subsourceID, updated)
+	err = store.UpdateSubsource(owner, subsourceID, updated)
 	if err != nil {
 		t.Fatalf("UpdateSubsource failed: %v", err)
 	}
@@ -514,18 +523,19 @@ func TestUpdateSubsource_PreventsPlatformIDChange(t *testing.T) {
 // Test DeleteSubsource removes subsource and sets delivery subsource_id to NULL
 func TestDeleteSubsource_RemovesSubsource(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	platformID := platforms[0].ID
 
 	// Create subsource
@@ -534,7 +544,7 @@ func TestDeleteSubsource_RemovesSubsource(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource)
+	err = store.AddSubsource(owner, subsource)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -546,7 +556,7 @@ func TestDeleteSubsource_RemovesSubsource(t *testing.T) {
 	subsourceID := subsources[0].ID
 
 	// Delete subsource
-	err = store.DeleteSubsource(subsourceID)
+	err = store.DeleteSubsource(owner, subsourceID)
 	if err != nil {
 		t.Fatalf("DeleteSubsource failed: %v", err)
 	}
@@ -570,8 +580,9 @@ func TestDeleteSubsource_RemovesSubsource(t *testing.T) {
 // Test DeleteSubsource with non-existent ID
 func TestDeleteSubsource_NotFound(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
-	err := store.DeleteSubsource("non-existent-id")
+	err := store.DeleteSubsource(owner, "non-existent-id")
 	// MemoryStore doesn't return error for non-existent ID
 	if err != nil {
 		t.Errorf("Expected no error for non-existent ID, got: %v", err)

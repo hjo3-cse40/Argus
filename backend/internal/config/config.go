@@ -19,14 +19,15 @@ const (
 )
 
 type Config struct {
-	Environment   Environment
-	Port          string
-	RabbitMQ      RabbitMQConfig
-	API           APIConfig
-	Database      DatabaseConfig
-	Destinations  DestinationsConfig
-	RSSHub        RSSHubConfig
-	DeliveryLimit int
+	Environment           Environment
+	Port                  string
+	RabbitMQ              RabbitMQConfig
+	API                   APIConfig
+	Database              DatabaseConfig
+	Destinations          DestinationsConfig
+	RSSHub                RSSHubConfig
+	DeliveryLimit         int
+	SessionCookieSecure   bool // false in dev (http://localhost), true in stage/prod
 }
 
 type RSSHubConfig struct {
@@ -95,9 +96,17 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid ENV value: %s (must be dev, stage, or prod)", env)
 	}
 
+	sessionCookieSecure := environment != EnvDev
+	if v := strings.TrimSpace(os.Getenv("SESSION_COOKIE_SECURE")); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			sessionCookieSecure = b
+		}
+	}
+
 	cfg := &Config{
-		Environment: environment,
-		Port:        getEnv("PORT", "8080"),
+		Environment:         environment,
+		SessionCookieSecure:   sessionCookieSecure,
+		Port:                  getEnv("PORT", "8080"),
 		RabbitMQ: RabbitMQConfig{
 			URL:      getEnv("RABBITMQ_URL", ""),
 			Username: getEnv("RABBITMQ_USER", "argus"),

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
@@ -83,6 +84,24 @@ func TestProperty_SourceCreationRoundTrip(t *testing.T) {
 }
 
 // Generators for valid source fields
+
+
+
+// propertyMemoryOwner creates a user for gopter property tests (no *testing.T in callbacks).
+func propertyMemoryOwner(st *MemoryStore) (string, bool) {
+	u := User{
+		Email:        uuid.New().String() + "@property.argus",
+		PasswordHash: "x",
+	}
+	if err := st.CreateUser(u); err != nil {
+		return "", false
+	}
+	out, ok := st.GetUserByEmail(u.Email)
+	if !ok {
+		return "", false
+	}
+	return out.ID, true
+}
 
 func genValidSourceName() gopter.Gen {
 	return gen.AlphaString().SuchThat(func(s string) bool {
@@ -245,6 +264,10 @@ func TestProperty_PlatformCreationGeneratesUUIDAndTimestamp(t *testing.T) {
 	properties.Property("Platform creation generates UUID and UTC timestamp", prop.ForAll(
 		func(name, webhook, secret string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform without ID
 			platform := Platform{
@@ -254,7 +277,7 @@ func TestProperty_PlatformCreationGeneratesUUIDAndTimestamp(t *testing.T) {
 			}
 
 			before := time.Now().UTC()
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			after := time.Now().UTC()
 
 			if err != nil {
@@ -262,7 +285,7 @@ func TestProperty_PlatformCreationGeneratesUUIDAndTimestamp(t *testing.T) {
 			}
 
 			// Retrieve platform
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -316,18 +339,22 @@ func TestProperty_SubsourceCreationGeneratesUUIDAndTimestamp(t *testing.T) {
 	properties.Property("Subsource creation generates UUID and UTC timestamp", prop.ForAll(
 		func(platformName, subsourceName, identifier, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// First create a platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -342,7 +369,7 @@ func TestProperty_SubsourceCreationGeneratesUUIDAndTimestamp(t *testing.T) {
 			}
 
 			before := time.Now().UTC()
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			after := time.Now().UTC()
 
 			if err != nil {
@@ -434,18 +461,22 @@ func TestProperty_PlatformDeletionCascadesToSubsources(t *testing.T) {
 			}
 
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -458,7 +489,7 @@ func TestProperty_PlatformDeletionCascadesToSubsources(t *testing.T) {
 					Name:       "Subsource" + string(rune('A'+i)),
 					Identifier: "id" + string(rune('A'+i)),
 				}
-				err := store.AddSubsource(subsource)
+				err := store.AddSubsource(owner, subsource)
 				if err != nil {
 					return false
 				}
@@ -471,13 +502,13 @@ func TestProperty_PlatformDeletionCascadesToSubsources(t *testing.T) {
 			}
 
 			// Delete platform
-			err = store.DeletePlatform(platformID)
+			err = store.DeletePlatform(owner, platformID)
 			if err != nil {
 				return false
 			}
 
 			// Verify platform is deleted
-			platforms = store.ListPlatforms()
+			platforms = store.ListPlatforms(owner)
 			if len(platforms) != 0 {
 				return false
 			}
@@ -503,19 +534,23 @@ func TestProperty_UniqueConstraintOnPlatformName(t *testing.T) {
 	properties.Property("Unique constraint on platform name", prop.ForAll(
 		func(name string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create first platform
 			platform1 := Platform{
 				Name:           name,
 				DiscordWebhook: "https://discord.com/api/webhooks/test1",
 			}
-			err := store.AddPlatform(platform1)
+			err := store.AddPlatform(owner, platform1)
 			if err != nil {
 				return false
 			}
 
 			// Verify first platform exists
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -525,13 +560,13 @@ func TestProperty_UniqueConstraintOnPlatformName(t *testing.T) {
 				Name:           name,
 				DiscordWebhook: "https://discord.com/api/webhooks/test2",
 			}
-			err = store.AddPlatform(platform2)
+			err = store.AddPlatform(owner, platform2)
 			if err == nil {
 				return false // Should have failed due to duplicate name
 			}
 
 			// Verify only one platform exists
-			platforms = store.ListPlatforms()
+			platforms = store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -559,6 +594,10 @@ func TestProperty_PlatformUpdatePreservesCreatedAt(t *testing.T) {
 	properties.Property("Platform update preserves created_at", prop.ForAll(
 		func(name, webhook1, webhook2, secret1, secret2 string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
@@ -566,13 +605,13 @@ func TestProperty_PlatformUpdatePreservesCreatedAt(t *testing.T) {
 				DiscordWebhook: webhook1,
 				WebhookSecret:  secret1,
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
 			// Get created platform
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -588,13 +627,13 @@ func TestProperty_PlatformUpdatePreservesCreatedAt(t *testing.T) {
 				DiscordWebhook: webhook2,
 				WebhookSecret:  secret2,
 			}
-			err = store.UpdatePlatform(original.ID, updated)
+			err = store.UpdatePlatform(owner, original.ID, updated)
 			if err != nil {
 				return false
 			}
 
 			// Get updated platform
-			platforms = store.ListPlatforms()
+			platforms = store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -635,6 +674,10 @@ func TestProperty_PlatformListingOrderedByNameAscending(t *testing.T) {
 	properties.Property("Platform listing ordered by name ascending", prop.ForAll(
 		func() bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platforms in random order (all three valid names)
 			names := []string{"youtube", "reddit", "x"}
@@ -643,14 +686,14 @@ func TestProperty_PlatformListingOrderedByNameAscending(t *testing.T) {
 					Name:           name,
 					DiscordWebhook: "https://discord.com/api/webhooks/test",
 				}
-				err := store.AddPlatform(platform)
+				err := store.AddPlatform(owner, platform)
 				if err != nil {
 					return false
 				}
 			}
 
 			// Get platforms
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 3 {
 				return false
 			}
@@ -688,18 +731,22 @@ func TestProperty_SubsourceDeletionSetsDeliverySubsourceIDToNull(t *testing.T) {
 	properties.Property("Subsource deletion sets delivery subsource_id to NULL", prop.ForAll(
 		func(platformName, subsourceName, identifier string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -711,7 +758,7 @@ func TestProperty_SubsourceDeletionSetsDeliverySubsourceIDToNull(t *testing.T) {
 				Name:       subsourceName,
 				Identifier: identifier,
 			}
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			if err != nil {
 				return false
 			}
@@ -723,7 +770,7 @@ func TestProperty_SubsourceDeletionSetsDeliverySubsourceIDToNull(t *testing.T) {
 			subsourceID := subsources[0].ID
 
 			// Delete subsource
-			err = store.DeleteSubsource(subsourceID)
+			err = store.DeleteSubsource(owner, subsourceID)
 			if err != nil {
 				return false
 			}
@@ -758,18 +805,22 @@ func TestProperty_UniqueConstraintOnSubsourceIdentifierPerPlatform(t *testing.T)
 	properties.Property("Unique constraint on subsource identifier per platform", prop.ForAll(
 		func(platformName, identifier string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -781,7 +832,7 @@ func TestProperty_UniqueConstraintOnSubsourceIdentifierPerPlatform(t *testing.T)
 				Name:       "First",
 				Identifier: identifier,
 			}
-			err = store.AddSubsource(subsource1)
+			err = store.AddSubsource(owner, subsource1)
 			if err != nil {
 				return false
 			}
@@ -798,7 +849,7 @@ func TestProperty_UniqueConstraintOnSubsourceIdentifierPerPlatform(t *testing.T)
 				Name:       "Second",
 				Identifier: identifier,
 			}
-			err = store.AddSubsource(subsource2)
+			err = store.AddSubsource(owner, subsource2)
 			if err == nil {
 				return false // Should have failed due to duplicate identifier
 			}
@@ -833,6 +884,10 @@ func TestProperty_SubsourceUpdatePreventsPlatformIDChange(t *testing.T) {
 	properties.Property("Subsource update prevents platform_id change", prop.ForAll(
 		func(platform1Name, platform2Name, subsourceName, identifier string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Skip if platform names are the same (would fail validation)
 			if platform1Name == platform2Name {
@@ -844,7 +899,7 @@ func TestProperty_SubsourceUpdatePreventsPlatformIDChange(t *testing.T) {
 				Name:           platform1Name,
 				DiscordWebhook: "https://discord.com/api/webhooks/test1",
 			}
-			err := store.AddPlatform(platform1)
+			err := store.AddPlatform(owner, platform1)
 			if err != nil {
 				return false
 			}
@@ -853,12 +908,12 @@ func TestProperty_SubsourceUpdatePreventsPlatformIDChange(t *testing.T) {
 				Name:           platform2Name,
 				DiscordWebhook: "https://discord.com/api/webhooks/test2",
 			}
-			err = store.AddPlatform(platform2)
+			err = store.AddPlatform(owner, platform2)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 2 {
 				return false
 			}
@@ -871,7 +926,7 @@ func TestProperty_SubsourceUpdatePreventsPlatformIDChange(t *testing.T) {
 				Name:       subsourceName,
 				Identifier: identifier,
 			}
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			if err != nil {
 				return false
 			}
@@ -889,7 +944,7 @@ func TestProperty_SubsourceUpdatePreventsPlatformIDChange(t *testing.T) {
 				Name:       "Updated Name",
 				Identifier: "updated_id",
 			}
-			err = store.UpdateSubsource(subsourceID, updated)
+			err = store.UpdateSubsource(owner, subsourceID, updated)
 			if err != nil {
 				return false
 			}
@@ -933,18 +988,22 @@ func TestProperty_SubsourceURLAutoGeneration(t *testing.T) {
 	properties.Property("Subsource URL auto-generation", prop.ForAll(
 		func(platformName, subsourceName, identifier string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -957,7 +1016,7 @@ func TestProperty_SubsourceURLAutoGeneration(t *testing.T) {
 				Identifier: identifier,
 				URL:        "", // No URL provided
 			}
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			if err != nil {
 				return false
 			}
@@ -1004,18 +1063,22 @@ func TestProperty_SubsourceURLPreservation(t *testing.T) {
 			}
 
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -1028,7 +1091,7 @@ func TestProperty_SubsourceURLPreservation(t *testing.T) {
 				Identifier: identifier,
 				URL:        url,
 			}
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			if err != nil {
 				return false
 			}
@@ -1066,18 +1129,22 @@ func TestProperty_SubsourceListingIncludesPlatformInformation(t *testing.T) {
 	properties.Property("Subsource listing includes platform information", prop.ForAll(
 		func(platformName, subsourceName, identifier string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -1089,7 +1156,7 @@ func TestProperty_SubsourceListingIncludesPlatformInformation(t *testing.T) {
 				Name:       subsourceName,
 				Identifier: identifier,
 			}
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			if err != nil {
 				return false
 			}
@@ -1104,7 +1171,7 @@ func TestProperty_SubsourceListingIncludesPlatformInformation(t *testing.T) {
 			}
 
 			// Test ListSubsources (filtered by platform)
-			platformSubsources := store.ListSubsources(platformID)
+			platformSubsources := store.ListSubsources(owner, platformID)
 			if len(platformSubsources) != 1 {
 				return false
 			}
@@ -1146,18 +1213,22 @@ func TestProperty_SubsourceListingOrderedByCreatedAtDescending(t *testing.T) {
 			}
 
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform
 			platform := Platform{
 				Name:           platformName,
 				DiscordWebhook: "https://discord.com/api/webhooks/test",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -1170,7 +1241,7 @@ func TestProperty_SubsourceListingOrderedByCreatedAtDescending(t *testing.T) {
 					Name:       "Subsource" + string(rune('A'+i)),
 					Identifier: "id" + string(rune('A'+i)),
 				}
-				err := store.AddSubsource(subsource)
+				err := store.AddSubsource(owner, subsource)
 				if err != nil {
 					return false
 				}
@@ -1207,6 +1278,10 @@ func TestProperty_PlatformNameValidation(t *testing.T) {
 	properties.Property("platform with invalid name should fail validation", prop.ForAll(
 		func(invalidName, webhook, secret string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform with invalid name
 			platform := Platform{
@@ -1215,7 +1290,7 @@ func TestProperty_PlatformNameValidation(t *testing.T) {
 				WebhookSecret:  secret,
 			}
 
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			
 			// Should always return an error for invalid names
 			return err != nil
@@ -1228,6 +1303,10 @@ func TestProperty_PlatformNameValidation(t *testing.T) {
 	properties.Property("platform with valid name should pass validation", prop.ForAll(
 		func(validName, webhook, secret string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform with valid name
 			platform := Platform{
@@ -1236,7 +1315,7 @@ func TestProperty_PlatformNameValidation(t *testing.T) {
 				WebhookSecret:  secret,
 			}
 
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			
 			// Should not return validation error for valid names (may fail for other reasons like duplicate)
 			if err != nil {
@@ -1269,6 +1348,10 @@ func TestProperty_DiscordWebhookURLValidation(t *testing.T) {
 	properties.Property("platform with invalid webhook URL should fail validation", prop.ForAll(
 		func(name, invalidWebhook, secret string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform with invalid webhook
 			platform := Platform{
@@ -1277,7 +1360,7 @@ func TestProperty_DiscordWebhookURLValidation(t *testing.T) {
 				WebhookSecret:  secret,
 			}
 
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			
 			// Should always return an error for invalid webhooks
 			return err != nil
@@ -1290,6 +1373,10 @@ func TestProperty_DiscordWebhookURLValidation(t *testing.T) {
 	properties.Property("platform with valid webhook URL should pass validation", prop.ForAll(
 		func(name, validWebhook, secret string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platform with valid webhook
 			platform := Platform{
@@ -1298,7 +1385,7 @@ func TestProperty_DiscordWebhookURLValidation(t *testing.T) {
 				WebhookSecret:  secret,
 			}
 
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			
 			// Should not return validation error for valid webhooks (may fail for other reasons like duplicate)
 			if err != nil {
@@ -1331,18 +1418,22 @@ func TestProperty_SubsourceNameAndIdentifierValidation(t *testing.T) {
 	properties.Property("subsource with empty/whitespace name should fail validation", prop.ForAll(
 		func(emptyName, identifier, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// First create a platform
 			platform := Platform{
 				Name:           "youtube",
 				DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) == 0 {
 				return false
 			}
@@ -1356,7 +1447,7 @@ func TestProperty_SubsourceNameAndIdentifierValidation(t *testing.T) {
 				URL:        url,
 			}
 
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			
 			// Should always return an error for empty/whitespace names
 			return err != nil
@@ -1369,18 +1460,22 @@ func TestProperty_SubsourceNameAndIdentifierValidation(t *testing.T) {
 	properties.Property("subsource with empty/whitespace identifier should fail validation", prop.ForAll(
 		func(name, emptyIdentifier, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// First create a platform
 			platform := Platform{
 				Name:           "youtube",
 				DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) == 0 {
 				return false
 			}
@@ -1394,7 +1489,7 @@ func TestProperty_SubsourceNameAndIdentifierValidation(t *testing.T) {
 				URL:        url,
 			}
 
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			
 			// Should always return an error for empty/whitespace identifiers
 			return err != nil
@@ -1407,18 +1502,22 @@ func TestProperty_SubsourceNameAndIdentifierValidation(t *testing.T) {
 	properties.Property("subsource with valid name and identifier should pass validation", prop.ForAll(
 		func(name, identifier, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// First create a platform
 			platform := Platform{
 				Name:           "youtube",
 				DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) == 0 {
 				return false
 			}
@@ -1432,7 +1531,7 @@ func TestProperty_SubsourceNameAndIdentifierValidation(t *testing.T) {
 				URL:        url,
 			}
 
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			
 			// Should not return validation error for valid names/identifiers (may fail for other reasons)
 			if err != nil {
@@ -1466,6 +1565,10 @@ func TestProperty_SubsourcePlatformIdReferentialIntegrity(t *testing.T) {
 	properties.Property("subsource with non-existent platform_id should fail", prop.ForAll(
 		func(nonExistentPlatformID, name, identifier, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create subsource with non-existent platform_id
 			subsource := Subsource{
@@ -1475,7 +1578,7 @@ func TestProperty_SubsourcePlatformIdReferentialIntegrity(t *testing.T) {
 				URL:        url,
 			}
 
-			err := store.AddSubsource(subsource)
+			err := store.AddSubsource(owner, subsource)
 			
 			// Should always return an error for non-existent platform_id
 			return err != nil
@@ -1489,18 +1592,22 @@ func TestProperty_SubsourcePlatformIdReferentialIntegrity(t *testing.T) {
 	properties.Property("subsource with existing platform_id should pass referential integrity", prop.ForAll(
 		func(name, identifier, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// First create a platform
 			platform := Platform{
 				Name:           "youtube",
 				DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 			}
-			err := store.AddPlatform(platform)
+			err := store.AddPlatform(owner, platform)
 			if err != nil {
 				return false
 			}
 
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) == 0 {
 				return false
 			}
@@ -1514,7 +1621,7 @@ func TestProperty_SubsourcePlatformIdReferentialIntegrity(t *testing.T) {
 				URL:        url,
 			}
 
-			err = store.AddSubsource(subsource)
+			err = store.AddSubsource(owner, subsource)
 			
 			// Should not return referential integrity error (may fail for other validation reasons)
 			if err != nil {
@@ -1565,6 +1672,10 @@ func TestProperty_MigrationCreatesOnePlatformPerUniqueType(t *testing.T) {
 	properties.Property("Migration creates one platform per unique type", prop.ForAll(
 		func(sourceTypes []string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create sources with various types (some may be duplicates)
 			for i, sourceType := range sourceTypes {
@@ -1581,7 +1692,7 @@ func TestProperty_MigrationCreatesOnePlatformPerUniqueType(t *testing.T) {
 			}
 
 			// Run migration
-			err := MigrateFlatToHierarchical(store)
+			err := MigrateFlatToHierarchical(store, owner)
 			if err != nil {
 				return false
 			}
@@ -1593,7 +1704,7 @@ func TestProperty_MigrationCreatesOnePlatformPerUniqueType(t *testing.T) {
 			}
 
 			// Verify number of platforms equals number of unique types
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != len(uniqueTypes) {
 				return false
 			}
@@ -1635,6 +1746,10 @@ func TestProperty_MigrationPreservesSourceDataInSubsources(t *testing.T) {
 	properties.Property("Migration preserves source data in subsources", prop.ForAll(
 		func(name, sourceType, repoURL, webhook, secret string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create a source
 			source := Source{
@@ -1657,7 +1772,7 @@ func TestProperty_MigrationPreservesSourceDataInSubsources(t *testing.T) {
 			originalSource := sources[0]
 
 			// Run migration
-			err = MigrateFlatToHierarchical(store)
+			err = MigrateFlatToHierarchical(store, owner)
 			if err != nil {
 				return false
 			}
@@ -1695,7 +1810,7 @@ func TestProperty_MigrationPreservesSourceDataInSubsources(t *testing.T) {
 			}
 
 			// Verify platform exists and matches source type
-			platform, found := store.GetPlatform(subsource.PlatformID)
+			platform, found := store.GetPlatform(owner, subsource.PlatformID)
 			if !found {
 				return false
 			}
@@ -1729,6 +1844,10 @@ func TestProperty_MigrationCreatesMultipleSubsourcesForSharedPlatform(t *testing
 			}
 
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create multiple sources with same type and webhook
 			for i := 0; i < sourceCount; i++ {
@@ -1745,13 +1864,13 @@ func TestProperty_MigrationCreatesMultipleSubsourcesForSharedPlatform(t *testing
 			}
 
 			// Run migration
-			err := MigrateFlatToHierarchical(store)
+			err := MigrateFlatToHierarchical(store, owner)
 			if err != nil {
 				return false
 			}
 
 			// Verify exactly one platform exists
-			platforms := store.ListPlatforms()
+			platforms := store.ListPlatforms(owner)
 			if len(platforms) != 1 {
 				return false
 			}
@@ -1808,6 +1927,10 @@ func TestProperty_DeliverySubsourceIDPopulation(t *testing.T) {
 	properties.Property("delivery subsource_id populated from event metadata", prop.ForAll(
 		func(eventID, source, title, url, subsourceID string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create delivery with subsource_id
 			delivery := Delivery{
@@ -1816,13 +1939,14 @@ func TestProperty_DeliverySubsourceIDPopulation(t *testing.T) {
 				Title:       title,
 				URL:         url,
 				SubsourceID: &subsourceID,
+				UserID:      owner,
 			}
 
 			// Add to store
 			store.AddQueued(delivery)
 
 			// Retrieve deliveries
-			deliveries := store.List()
+			deliveries := store.List(owner)
 			if len(deliveries) != 1 {
 				return false
 			}
@@ -1849,6 +1973,10 @@ func TestProperty_DeliverySubsourceIDPopulation(t *testing.T) {
 	properties.Property("delivery without subsource_id has nil SubsourceID", prop.ForAll(
 		func(eventID, source, title, url string) bool {
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create delivery without subsource_id
 			delivery := Delivery{
@@ -1857,13 +1985,14 @@ func TestProperty_DeliverySubsourceIDPopulation(t *testing.T) {
 				Title:       title,
 				URL:         url,
 				SubsourceID: nil,
+				UserID:      owner,
 			}
 
 			// Add to store
 			store.AddQueued(delivery)
 
 			// Retrieve deliveries
-			deliveries := store.List()
+			deliveries := store.List(owner)
 			if len(deliveries) != 1 {
 				return false
 			}
@@ -1899,6 +2028,10 @@ func TestProperty_DeliveryFilteringBySubsource(t *testing.T) {
 			}
 
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Add deliveries for target subsource
 			targetCount := 0
@@ -1910,6 +2043,7 @@ func TestProperty_DeliveryFilteringBySubsource(t *testing.T) {
 					Title:       "Test Title",
 					URL:         "https://example.com",
 					SubsourceID: &targetSubsourceID,
+					UserID:      owner,
 				}
 				store.AddQueued(delivery)
 				targetCount++
@@ -1924,12 +2058,13 @@ func TestProperty_DeliveryFilteringBySubsource(t *testing.T) {
 					Title:       "Test Title",
 					URL:         "https://example.com",
 					SubsourceID: &otherSubsourceID,
+					UserID:      owner,
 				}
 				store.AddQueued(delivery)
 			}
 
 			// Filter by target subsource
-			filtered := store.ListDeliveriesBySubsource(targetSubsourceID)
+			filtered := store.ListDeliveriesBySubsource(owner, targetSubsourceID)
 
 			// Verify all returned deliveries have target subsource_id
 			if len(filtered) != targetCount {
@@ -1969,6 +2104,10 @@ func TestProperty_DeliveryFilteringByPlatform(t *testing.T) {
 			}
 
 			store := NewMemoryStore(100)
+			owner, ok := propertyMemoryOwner(store)
+			if !ok {
+				return false
+			}
 
 			// Create platforms
 			targetPlatform := Platform{
@@ -1984,8 +2123,8 @@ func TestProperty_DeliveryFilteringByPlatform(t *testing.T) {
 				CreatedAt:      time.Now().UTC(),
 			}
 
-			_ = store.AddPlatform(targetPlatform)
-			_ = store.AddPlatform(otherPlatform)
+			_ = store.AddPlatform(owner, targetPlatform)
+			_ = store.AddPlatform(owner, otherPlatform)
 
 			// Create subsources for target platform
 			targetSubsourceIDVal, _ := gen.Identifier().Sample()
@@ -2007,7 +2146,7 @@ func TestProperty_DeliveryFilteringByPlatform(t *testing.T) {
 				Identifier: "target-id",
 				CreatedAt:  time.Now().UTC(),
 			}
-			_ = store.AddSubsource(targetSubsource)
+			_ = store.AddSubsource(owner, targetSubsource)
 
 			otherSubsource := Subsource{
 				ID:         otherSubsourceID,
@@ -2016,7 +2155,7 @@ func TestProperty_DeliveryFilteringByPlatform(t *testing.T) {
 				Identifier: "other-id",
 				CreatedAt:  time.Now().UTC(),
 			}
-			_ = store.AddSubsource(otherSubsource)
+			_ = store.AddSubsource(owner, otherSubsource)
 
 			// Add deliveries for target platform's subsource
 			targetCount := 0
@@ -2028,6 +2167,7 @@ func TestProperty_DeliveryFilteringByPlatform(t *testing.T) {
 					Title:       "Test Title",
 					URL:         "https://example.com",
 					SubsourceID: &targetSubsourceID,
+					UserID:      owner,
 				}
 				store.AddQueued(delivery)
 				targetCount++
@@ -2042,12 +2182,13 @@ func TestProperty_DeliveryFilteringByPlatform(t *testing.T) {
 					Title:       "Test Title",
 					URL:         "https://example.com",
 					SubsourceID: &otherSubsourceID,
+					UserID:      owner,
 				}
 				store.AddQueued(delivery)
 			}
 
 			// Filter by target platform
-			filtered := store.ListDeliveriesByPlatform(targetPlatformID)
+			filtered := store.ListDeliveriesByPlatform(owner, targetPlatformID)
 
 			// Verify all returned deliveries belong to target platform's subsources
 			if len(filtered) != targetCount {

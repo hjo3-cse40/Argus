@@ -30,7 +30,7 @@ func (a *notifierStoreAdapter) GetSubsource(id string) (notifier.Subsource, bool
 }
 
 func (a *notifierStoreAdapter) GetPlatform(id string) (notifier.Platform, bool) {
-	p, found := a.st.GetPlatform(id)
+	p, found := a.st.GetPlatformUnscoped(id)
 	if !found {
 		return notifier.Platform{}, false
 	}
@@ -155,11 +155,25 @@ func main() {
 			}
 		}
 
-		// Apply per-destination filters
+		// Apply per-destination filters (scoped to owning user when known)
 		if platformID != "" {
-			filters := st.ListFilters(platformID)
+			filterUserID := ""
+			if sid, ok := ev.Metadata["subsource_id"].(string); ok && sid != "" {
+				if sub, ok := st.GetSubsource(sid); ok {
+					filterUserID = sub.UserID
+				}
+			}
+			if filterUserID == "" {
+				if p, ok := st.GetPlatformUnscoped(platformID); ok {
+					filterUserID = p.UserID
+				}
+			}
+			var filters []store.DestinationFilter
+			if filterUserID != "" {
+				filters = st.ListFilters(filterUserID, platformID)
+			}
 			opts := filter.FilterCombineOpts{}
-			if p, ok := st.GetPlatform(platformID); ok {
+			if p, ok := st.GetPlatformUnscoped(platformID); ok {
 				opts.IncludeCombine = p.FilterIncludeCombine
 				opts.ExcludeCombine = p.FilterExcludeCombine
 			}

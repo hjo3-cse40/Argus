@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/store"
 )
 
@@ -19,7 +20,12 @@ func NewSubsourcesHandler(st store.Store) *SubsourcesHandler {
 
 // Create handles POST /api/platforms/:platform_id/subsources
 func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
-	// Extract platform_id from path
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	platformID := r.PathValue("platform_id")
 	if platformID == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -30,8 +36,7 @@ func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify platform exists
-	_, found := h.Store.GetPlatform(platformID)
+	_, found := h.Store.GetPlatform(user.ID, platformID)
 	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -68,8 +73,7 @@ func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Convert to store.Subsource
 	subsource := req.toStoreSubsource(platformID)
 
-	// Add to store
-	if err := h.Store.AddSubsource(subsource); err != nil {
+	if err := h.Store.AddSubsource(user.ID, subsource); err != nil {
 		// Check if it's a duplicate identifier error
 		if strings.Contains(err.Error(), "already exists") {
 			w.Header().Set("Content-Type", "application/json")
@@ -101,8 +105,7 @@ func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the created subsource (with generated ID and timestamp)
-	subsources := h.Store.ListSubsources(platformID)
+	subsources := h.Store.ListSubsources(user.ID, platformID)
 	if len(subsources) == 0 {
 		log.Printf("Subsource was added but not found in store")
 		w.Header().Set("Content-Type", "application/json")
@@ -127,7 +130,12 @@ func (h *SubsourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // ListByPlatform handles GET /api/platforms/:platform_id/subsources
 func (h *SubsourcesHandler) ListByPlatform(w http.ResponseWriter, r *http.Request) {
-	// Extract platform_id from path
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	platformID := r.PathValue("platform_id")
 	if platformID == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -138,8 +146,7 @@ func (h *SubsourcesHandler) ListByPlatform(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Retrieve subsources for platform from store
-	subsources := h.Store.ListSubsources(platformID)
+	subsources := h.Store.ListSubsources(user.ID, platformID)
 
 	// Convert to response format
 	responses := make([]SubsourceResponse, len(subsources))
@@ -155,7 +162,12 @@ func (h *SubsourcesHandler) ListByPlatform(w http.ResponseWriter, r *http.Reques
 
 // Get handles GET /api/subsources/:id
 func (h *SubsourcesHandler) Get(w http.ResponseWriter, r *http.Request) {
-	// Extract id from path
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.PathValue("id")
 	if id == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -166,8 +178,7 @@ func (h *SubsourcesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve subsource from store
-	subsource, found := h.Store.GetSubsource(id)
+	subsource, found := h.Store.GetSubsourceForUser(user.ID, id)
 	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -188,7 +199,12 @@ func (h *SubsourcesHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update handles PUT /api/subsources/:id
 func (h *SubsourcesHandler) Update(w http.ResponseWriter, r *http.Request) {
-	// Extract id from path
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.PathValue("id")
 	if id == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -199,8 +215,7 @@ func (h *SubsourcesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get existing subsource to preserve platform_id, identifier, and created_at
-	existingSubsource, found := h.Store.GetSubsource(id)
+	existingSubsource, found := h.Store.GetSubsourceForUser(user.ID, id)
 	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -241,8 +256,7 @@ func (h *SubsourcesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		URL:        req.URL,
 	}
 
-	// Update in store
-	if err := h.Store.UpdateSubsource(id, subsource); err != nil {
+	if err := h.Store.UpdateSubsource(user.ID, id, subsource); err != nil {
 		log.Printf("Failed to update subsource: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -252,8 +266,7 @@ func (h *SubsourcesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the updated subsource
-	updatedSubsource, found := h.Store.GetSubsource(id)
+	updatedSubsource, found := h.Store.GetSubsourceForUser(user.ID, id)
 	if !found {
 		log.Printf("Subsource was updated but not found in store")
 		w.Header().Set("Content-Type", "application/json")
@@ -275,7 +288,12 @@ func (h *SubsourcesHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/subsources/:id
 func (h *SubsourcesHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	// Extract id from path
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.PathValue("id")
 	log.Printf("DELETE /api/subsources/%s - Request received", id)
 	
@@ -289,8 +307,7 @@ func (h *SubsourcesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if subsource exists
-	_, found := h.Store.GetSubsource(id)
+	_, found := h.Store.GetSubsourceForUser(user.ID, id)
 	if !found {
 		log.Printf("DELETE /api/subsources/%s - Subsource not found", id)
 		w.Header().Set("Content-Type", "application/json")
@@ -303,8 +320,7 @@ func (h *SubsourcesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("DELETE /api/subsources/%s - Subsource found, attempting delete", id)
 	
-	// Delete from store
-	if err := h.Store.DeleteSubsource(id); err != nil {
+	if err := h.Store.DeleteSubsource(user.ID, id); err != nil {
 		log.Printf("DELETE /api/subsources/%s - Failed to delete: %v", id, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)

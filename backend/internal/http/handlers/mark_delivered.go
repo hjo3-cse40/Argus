@@ -29,11 +29,8 @@ func (h *MarkDeliveredHandler) Mark(w http.ResponseWriter, r *http.Request) {
 	found := h.Store.MarkDelivered(body.EventID)
 
 	if found && h.Broadcaster != nil {
-		for _, d := range h.Store.List() {
-			if d.EventID == body.EventID && d.Status == store.StatusDelivered {
-				h.Broadcaster.Publish(d)
-				break
-			}
+		if d, ok := h.Store.GetDelivery(body.EventID); ok && d.Status == store.StatusDelivered {
+			h.Broadcaster.Publish(d)
 		}
 	}
 

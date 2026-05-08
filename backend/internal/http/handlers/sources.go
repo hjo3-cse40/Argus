@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/store"
 )
 
@@ -18,6 +19,11 @@ func NewSourcesHandler(st store.Store) *SourcesHandler {
 
 // Create handles POST /api/sources
 func (h *SourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
+	if _, ok := auth.UserFromContext(r.Context()); !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse JSON request body
 	var req CreateSourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -90,6 +96,11 @@ func (h *SourcesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/sources
 func (h *SourcesHandler) List(w http.ResponseWriter, r *http.Request) {
+	if _, ok := auth.UserFromContext(r.Context()); !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Check for name query parameter (for worker routing)
 	name := r.URL.Query().Get("name")
 	

@@ -8,8 +8,16 @@ import (
 	"testing"
 	"time"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/store"
 )
+
+const deliveriesHandlerTestUserID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+
+func deliveriesReqWithUser(r *http.Request) *http.Request {
+	u := store.User{ID: deliveriesHandlerTestUserID, Email: "deliveries-handler@test"}
+	return r.WithContext(auth.ContextWithUser(r.Context(), u))
+}
 
 type deliveryTestStore struct {
 	mu         sync.Mutex
@@ -54,19 +62,37 @@ func (s *deliveryTestStore) MarkFailed(eventID string, retryCount int, lastErr s
 	return false
 }
 
-func (s *deliveryTestStore) List() []store.Delivery {
+func (s *deliveryTestStore) GetDelivery(eventID string) (store.Delivery, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := make([]store.Delivery, len(s.deliveries))
-	copy(out, s.deliveries)
-	return out
+	for _, d := range s.deliveries {
+		if d.EventID == eventID {
+			return d, true
+		}
+	}
+	return store.Delivery{}, false
 }
 
-func (s *deliveryTestStore) ListDeliveriesBySubsource(subsourceID string) []store.Delivery {
+func (s *deliveryTestStore) List(userID string) []store.Delivery {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out []store.Delivery
 	for _, d := range s.deliveries {
+		if d.UserID == userID {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+func (s *deliveryTestStore) ListDeliveriesBySubsource(userID string, subsourceID string) []store.Delivery {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []store.Delivery
+	for _, d := range s.deliveries {
+		if d.UserID != userID {
+			continue
+		}
 		if d.SubsourceID != nil && *d.SubsourceID == subsourceID {
 			out = append(out, d)
 		}
@@ -74,29 +100,43 @@ func (s *deliveryTestStore) ListDeliveriesBySubsource(subsourceID string) []stor
 	return out
 }
 
-func (s *deliveryTestStore) ListDeliveriesByPlatform(string) []store.Delivery { return nil }
+func (s *deliveryTestStore) ListDeliveriesByPlatform(userID string, platformID string) []store.Delivery {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_ = userID
+	_ = platformID
+	return nil
+}
 
-func (s *deliveryTestStore) AddSource(store.Source) error                          { return nil }
-func (s *deliveryTestStore) ListSources() []store.Source                           { return nil }
-func (s *deliveryTestStore) GetSource(string) (store.Source, bool)                 { return store.Source{}, false }
-func (s *deliveryTestStore) GetSourceByName(string) (store.Source, bool)           { return store.Source{}, false }
-func (s *deliveryTestStore) AddPlatform(store.Platform) error                      { return nil }
-func (s *deliveryTestStore) ListPlatforms() []store.Platform                       { return nil }
-func (s *deliveryTestStore) GetPlatform(string) (store.Platform, bool)             { return store.Platform{}, false }
-func (s *deliveryTestStore) GetPlatformByName(string) (store.Platform, bool)       { return store.Platform{}, false }
-func (s *deliveryTestStore) UpdatePlatform(string, store.Platform) error           { return nil }
-func (s *deliveryTestStore) DeletePlatform(string) error                           { return nil }
-func (s *deliveryTestStore) AddSubsource(store.Subsource) error                    { return nil }
-func (s *deliveryTestStore) ListSubsources(string) []store.SubsourceWithPlatform   { return nil }
-func (s *deliveryTestStore) ListAllSubsources() []store.SubsourceWithPlatform      { return nil }
+func (s *deliveryTestStore) AddSource(store.Source) error                        { return nil }
+func (s *deliveryTestStore) ListSources() []store.Source                         { return nil }
+func (s *deliveryTestStore) GetSource(string) (store.Source, bool)               { return store.Source{}, false }
+func (s *deliveryTestStore) GetSourceByName(string) (store.Source, bool)         { return store.Source{}, false }
+func (s *deliveryTestStore) AddPlatform(string, store.Platform) error            { return nil }
+func (s *deliveryTestStore) ListPlatforms(string) []store.Platform               { return nil }
+func (s *deliveryTestStore) GetPlatform(string, string) (store.Platform, bool)     { return store.Platform{}, false }
+func (s *deliveryTestStore) GetPlatformByName(string, string) (store.Platform, bool) {
+	return store.Platform{}, false
+}
+func (s *deliveryTestStore) GetPlatformUnscoped(string) (store.Platform, bool) { return store.Platform{}, false }
+func (s *deliveryTestStore) UpdatePlatform(string, string, store.Platform) error { return nil }
+func (s *deliveryTestStore) DeletePlatform(string, string) error                 { return nil }
+func (s *deliveryTestStore) AddSubsource(string, store.Subsource) error          { return nil }
+func (s *deliveryTestStore) ListSubsources(string, string) []store.SubsourceWithPlatform {
+	return nil
+}
+func (s *deliveryTestStore) ListAllSubsources() []store.SubsourceWithPlatform { return nil }
 func (s *deliveryTestStore) GetSubsource(string) (store.SubsourceWithPlatform, bool) {
 	return store.SubsourceWithPlatform{}, false
 }
-func (s *deliveryTestStore) UpdateSubsource(string, store.Subsource) error { return nil }
-func (s *deliveryTestStore) DeleteSubsource(string) error                  { return nil }
-func (s *deliveryTestStore) AddFilter(store.DestinationFilter) error       { return nil }
-func (s *deliveryTestStore) ListFilters(string) []store.DestinationFilter  { return nil }
-func (s *deliveryTestStore) DeleteFilter(string) error                     { return nil }
+func (s *deliveryTestStore) GetSubsourceForUser(string, string) (store.SubsourceWithPlatform, bool) {
+	return store.SubsourceWithPlatform{}, false
+}
+func (s *deliveryTestStore) UpdateSubsource(string, string, store.Subsource) error { return nil }
+func (s *deliveryTestStore) DeleteSubsource(string, string) error                 { return nil }
+func (s *deliveryTestStore) AddFilter(string, store.DestinationFilter) error     { return nil }
+func (s *deliveryTestStore) ListFilters(string, string) []store.DestinationFilter { return nil }
+func (s *deliveryTestStore) DeleteFilter(string, string) error                   { return nil }
 func (s *deliveryTestStore) CreateUser(store.User) error                   { return nil }
 func (s *deliveryTestStore) GetUserByEmail(string) (store.User, bool)      { return store.User{}, false }
 func (s *deliveryTestStore) GetUserByID(string) (store.User, bool)         { return store.User{}, false }
@@ -131,6 +171,7 @@ func seedDeliveries(st *deliveryTestStore) {
 			Title:       e.title,
 			URL:         "https://example.com/" + e.eventID,
 			SubsourceID: &sub,
+			UserID:      deliveriesHandlerTestUserID,
 		})
 		switch e.markAs {
 		case "delivered":
@@ -147,7 +188,7 @@ func TestDeliveriesHandler_List_Empty(t *testing.T) {
 	st := newTestStore()
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -171,7 +212,7 @@ func TestDeliveriesHandler_List_ReturnsAll(t *testing.T) {
 	seedDeliveries(st)
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -197,11 +238,12 @@ func TestDeliveriesHandler_List_FieldsForUI(t *testing.T) {
 		Source:  "youtube",
 		Title:   "UI Field Test",
 		URL:     "https://example.com/ui",
+		UserID:  deliveriesHandlerTestUserID,
 	})
 	st.MarkDelivered("evt-ui")
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -253,7 +295,7 @@ func TestDeliveriesHandler_List_FilterByStatus(t *testing.T) {
 			if tc.status != "" {
 				url += "?status=" + tc.status
 			}
-			req := httptest.NewRequest("GET", url, nil)
+			req := deliveriesReqWithUser(httptest.NewRequest("GET", url, nil))
 			w := httptest.NewRecorder()
 
 			handler.List(w, req)
@@ -279,7 +321,7 @@ func TestDeliveriesHandler_List_Limit(t *testing.T) {
 	seedDeliveries(st)
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries?limit=2", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries?limit=2", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -301,11 +343,12 @@ func TestDeliveriesHandler_List_LimitCappedAt100(t *testing.T) {
 			EventID: "evt-cap-" + string(rune(i+33)),
 			Source:  "test",
 			Title:   "Cap Test",
+			UserID:  deliveriesHandlerTestUserID,
 		})
 	}
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries?limit=150", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries?limit=150", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -325,7 +368,7 @@ func TestDeliveriesHandler_List_StatusLabelsMatchUI(t *testing.T) {
 	seedDeliveries(st)
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -356,10 +399,11 @@ func TestDeliveriesHandler_List_JSONShape(t *testing.T) {
 		Source:  "reddit",
 		Title:   "Shape Test",
 		URL:     "https://reddit.com/r/test",
+		UserID:  deliveriesHandlerTestUserID,
 	})
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -386,13 +430,13 @@ func TestDeliveriesHandler_List_FilterBySubsource(t *testing.T) {
 	sub1 := "sub-1"
 	sub2 := "sub-2"
 
-	st.AddQueued(store.Delivery{EventID: "e1", Source: "youtube", SubsourceID: &sub1})
-	st.AddQueued(store.Delivery{EventID: "e2", Source: "reddit", SubsourceID: &sub2})
-	st.AddQueued(store.Delivery{EventID: "e3", Source: "youtube", SubsourceID: &sub1})
+	st.AddQueued(store.Delivery{EventID: "e1", Source: "youtube", SubsourceID: &sub1, UserID: deliveriesHandlerTestUserID})
+	st.AddQueued(store.Delivery{EventID: "e2", Source: "reddit", SubsourceID: &sub2, UserID: deliveriesHandlerTestUserID})
+	st.AddQueued(store.Delivery{EventID: "e3", Source: "youtube", SubsourceID: &sub1, UserID: deliveriesHandlerTestUserID})
 
 	handler := NewDeliveriesHandler(st)
 
-	req := httptest.NewRequest("GET", "/deliveries?subsource_id=sub-1", nil)
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries?subsource_id=sub-1", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)

@@ -8,6 +8,7 @@ import (
 // Test migration creates platforms from unique source types
 func TestMigrationCreatesPlatformsFromUniqueSourceTypes(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create sources with different types
 	sources := []Source{
@@ -25,13 +26,13 @@ func TestMigrationCreatesPlatformsFromUniqueSourceTypes(t *testing.T) {
 	}
 
 	// Run migration
-	err := MigrateFlatToHierarchical(store)
+	err := MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Migration failed: %v", err)
 	}
 
 	// Verify platforms created
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 3 {
 		t.Errorf("Expected 3 platforms, got %d", len(platforms))
 	}
@@ -53,6 +54,7 @@ func TestMigrationCreatesPlatformsFromUniqueSourceTypes(t *testing.T) {
 // Test migration creates subsources from sources
 func TestMigrationCreatesSubsourcesFromSources(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create sources
 	sources := []Source{
@@ -68,7 +70,7 @@ func TestMigrationCreatesSubsourcesFromSources(t *testing.T) {
 	}
 
 	// Run migration
-	err := MigrateFlatToHierarchical(store)
+	err := MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Migration failed: %v", err)
 	}
@@ -119,6 +121,7 @@ func TestMigrationCreatesSubsourcesFromSources(t *testing.T) {
 // Test migration preserves timestamps
 func TestMigrationPreservesTimestamps(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create source with specific timestamp
 	now := time.Now().UTC()
@@ -135,13 +138,13 @@ func TestMigrationPreservesTimestamps(t *testing.T) {
 	}
 
 	// Run migration
-	err = MigrateFlatToHierarchical(store)
+	err = MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Migration failed: %v", err)
 	}
 
 	// Verify platform timestamp
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
@@ -162,6 +165,7 @@ func TestMigrationPreservesTimestamps(t *testing.T) {
 // Test migration fails on inconsistent webhooks with descriptive error
 func TestMigrationFailsOnInconsistentWebhooks(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create sources with same type but different webhooks
 	sources := []Source{
@@ -177,7 +181,7 @@ func TestMigrationFailsOnInconsistentWebhooks(t *testing.T) {
 	}
 
 	// Run migration - should fail
-	err := MigrateFlatToHierarchical(store)
+	err := MigrateFlatToHierarchical(store, owner)
 	if err == nil {
 		t.Fatal("Expected migration to fail due to inconsistent webhooks")
 	}
@@ -189,7 +193,7 @@ func TestMigrationFailsOnInconsistentWebhooks(t *testing.T) {
 	}
 
 	// Verify no platforms were created
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 0 {
 		t.Errorf("Expected 0 platforms after failed migration, got %d", len(platforms))
 	}
@@ -204,6 +208,7 @@ func TestMigrationFailsOnInconsistentWebhooks(t *testing.T) {
 // Test migration is idempotent (can run multiple times safely)
 func TestMigrationIsIdempotent(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create source
 	source := Source{
@@ -218,26 +223,26 @@ func TestMigrationIsIdempotent(t *testing.T) {
 	}
 
 	// Run migration first time
-	err = MigrateFlatToHierarchical(store)
+	err = MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("First migration failed: %v", err)
 	}
 
 	// Verify initial state
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	subsources := store.ListAllSubsources()
 	if len(platforms) != 1 || len(subsources) != 1 {
 		t.Fatalf("Expected 1 platform and 1 subsource after first migration")
 	}
 
 	// Run migration second time - should not fail or create duplicates
-	err = MigrateFlatToHierarchical(store)
+	err = MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Second migration failed: %v", err)
 	}
 
 	// Verify state unchanged
-	platforms2 := store.ListPlatforms()
+	platforms2 := store.ListPlatforms(owner)
 	subsources2 := store.ListAllSubsources()
 	if len(platforms2) != 1 || len(subsources2) != 1 {
 		t.Errorf("Expected 1 platform and 1 subsource after second migration, got %d platforms and %d subsources",
@@ -248,15 +253,16 @@ func TestMigrationIsIdempotent(t *testing.T) {
 // Test migration handles empty sources table
 func TestMigrationHandlesEmptySourcesTable(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Run migration on empty store - should not fail
-	err := MigrateFlatToHierarchical(store)
+	err := MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Migration failed on empty store: %v", err)
 	}
 
 	// Verify no platforms or subsources created
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	subsources := store.ListAllSubsources()
 	if len(platforms) != 0 || len(subsources) != 0 {
 		t.Errorf("Expected 0 platforms and 0 subsources for empty migration, got %d platforms and %d subsources",
@@ -267,6 +273,7 @@ func TestMigrationHandlesEmptySourcesTable(t *testing.T) {
 // Test migration creates multiple subsources for shared platform
 func TestMigrationCreatesMultipleSubsourcesForSharedPlatform(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create multiple sources with same type and webhook
 	sources := []Source{
@@ -283,13 +290,13 @@ func TestMigrationCreatesMultipleSubsourcesForSharedPlatform(t *testing.T) {
 	}
 
 	// Run migration
-	err := MigrateFlatToHierarchical(store)
+	err := MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Migration failed: %v", err)
 	}
 
 	// Verify exactly one platform created
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Errorf("Expected 1 platform, got %d", len(platforms))
 	}
@@ -336,6 +343,7 @@ func TestMigrationCreatesMultipleSubsourcesForSharedPlatform(t *testing.T) {
 // Test migration uses repository_url as identifier when available
 func TestMigrationUsesRepositoryURLAsIdentifier(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	// Create sources with and without repository_url
 	sources := []Source{
@@ -351,7 +359,7 @@ func TestMigrationUsesRepositoryURLAsIdentifier(t *testing.T) {
 	}
 
 	// Run migration
-	err := MigrateFlatToHierarchical(store)
+	err := MigrateFlatToHierarchical(store, owner)
 	if err != nil {
 		t.Fatalf("Migration failed: %v", err)
 	}

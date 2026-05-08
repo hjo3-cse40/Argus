@@ -6,9 +6,12 @@ import (
 	"os"
 	"time"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/http/handlers"
 	"argus-backend/internal/store"
 )
+
+const frontendTestUserID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
 func main() {
 	log.Println("Starting frontend test server (no RabbitMQ required)")
@@ -22,21 +25,28 @@ func main() {
 	// Add some test data
 	addTestData(st)
 
+	withUser := func(h http.HandlerFunc) http.HandlerFunc {
+		u := store.User{ID: frontendTestUserID, Email: "frontend-test@local"}
+		return func(w http.ResponseWriter, r *http.Request) {
+			h(w, r.WithContext(auth.ContextWithUser(r.Context(), u)))
+		}
+	}
+
 	// Platform management endpoints
 	ph := handlers.NewPlatformsHandler(st)
-	mux.HandleFunc("POST /api/platforms", ph.Create)
-	mux.HandleFunc("GET /api/platforms", ph.List)
-	mux.HandleFunc("GET /api/platforms/{id}", ph.Get)
-	mux.HandleFunc("PUT /api/platforms/{id}", ph.Update)
-	mux.HandleFunc("DELETE /api/platforms/{id}", ph.Delete)
+	mux.HandleFunc("POST /api/platforms", withUser(ph.Create))
+	mux.HandleFunc("GET /api/platforms", withUser(ph.List))
+	mux.HandleFunc("GET /api/platforms/{id}", withUser(ph.Get))
+	mux.HandleFunc("PUT /api/platforms/{id}", withUser(ph.Update))
+	mux.HandleFunc("DELETE /api/platforms/{id}", withUser(ph.Delete))
 
-	// Subsource management endpoints  
+	// Subsource management endpoints
 	sh := handlers.NewSubsourcesHandler(st)
-	mux.HandleFunc("POST /api/platforms/{platform_id}/subsources", sh.Create)
-	mux.HandleFunc("GET /api/platforms/{platform_id}/subsources", sh.ListByPlatform)
-	mux.HandleFunc("GET /api/subsources/{id}", sh.Get)
-	mux.HandleFunc("PUT /api/subsources/{id}", sh.Update)
-	mux.HandleFunc("DELETE /api/subsources/{id}", sh.Delete)
+	mux.HandleFunc("POST /api/platforms/{platform_id}/subsources", withUser(sh.Create))
+	mux.HandleFunc("GET /api/platforms/{platform_id}/subsources", withUser(sh.ListByPlatform))
+	mux.HandleFunc("GET /api/subsources/{id}", withUser(sh.Get))
+	mux.HandleFunc("PUT /api/subsources/{id}", withUser(sh.Update))
+	mux.HandleFunc("DELETE /api/subsources/{id}", withUser(sh.Delete))
 
 	// Serve static files - handle both from backend dir and root dir
 	var staticDir string
@@ -67,20 +77,25 @@ func main() {
 }
 
 func addTestData(st *store.MemoryStore) {
-	// Add some test platforms
+	_ = st.CreateUser(store.User{
+		ID:           frontendTestUserID,
+		Email:        "frontend-test@local",
+		PasswordHash: "-",
+		CreatedAt:    time.Now().UTC(),
+	})
 	youtube := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/test",
 		WebhookSecret:  "secret123",
 	}
-	_ = st.AddPlatform(youtube)
+	_ = st.AddPlatform(frontendTestUserID, youtube)
 
 	reddit := store.Platform{
-		Name:           "reddit", 
+		Name:           "reddit",
 		DiscordWebhook: "https://discord.com/api/webhooks/456/test",
 		WebhookSecret:  "secret456",
 	}
-	_ = st.AddPlatform(reddit)
+	_ = st.AddPlatform(frontendTestUserID, reddit)
 
 	log.Println("Added test platforms: youtube, reddit")
 }

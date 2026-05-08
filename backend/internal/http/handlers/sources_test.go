@@ -13,10 +13,11 @@ import (
 
 func TestSourcesHandler_Create_InvalidJSON(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSourcesHandler(st)
 
 	// Send invalid JSON
-	req := httptest.NewRequest("POST", "/api/sources", strings.NewReader("{invalid json"))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/sources", strings.NewReader("{invalid json")), user)
 	w := httptest.NewRecorder()
 
 	handler.Create(w, req)
@@ -65,10 +66,11 @@ func TestSourcesHandler_Create_MissingRequiredFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			st := store.NewMemoryStore(100)
+			user := testMemoryStoreUser(t, st)
 			handler := NewSourcesHandler(st)
 
 			body, _ := json.Marshal(tt.payload)
-			req := httptest.NewRequest("POST", "/api/sources", bytes.NewReader(body))
+			req := withAuthUser(httptest.NewRequest("POST", "/api/sources", bytes.NewReader(body)), user)
 			w := httptest.NewRecorder()
 
 			handler.Create(w, req)
@@ -115,6 +117,7 @@ func TestSourcesHandler_Create_MalformedDiscordWebhook(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			st := store.NewMemoryStore(100)
+			user := testMemoryStoreUser(t, st)
 			handler := NewSourcesHandler(st)
 
 			payload := CreateSourceRequest{
@@ -124,7 +127,7 @@ func TestSourcesHandler_Create_MalformedDiscordWebhook(t *testing.T) {
 			}
 
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest("POST", "/api/sources", bytes.NewReader(body))
+			req := withAuthUser(httptest.NewRequest("POST", "/api/sources", bytes.NewReader(body)), user)
 			w := httptest.NewRecorder()
 
 			handler.Create(w, req)
@@ -158,6 +161,7 @@ func TestSourcesHandler_Create_MalformedDiscordWebhook(t *testing.T) {
 
 func TestSourcesHandler_Create_Success(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSourcesHandler(st)
 
 	payload := CreateSourceRequest{
@@ -168,7 +172,7 @@ func TestSourcesHandler_Create_Success(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(payload)
-	req := httptest.NewRequest("POST", "/api/sources", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/sources", bytes.NewReader(body)), user)
 	w := httptest.NewRecorder()
 
 	handler.Create(w, req)
@@ -201,9 +205,10 @@ func TestSourcesHandler_Create_Success(t *testing.T) {
 
 func TestSourcesHandler_List_Empty(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSourcesHandler(st)
 
-	req := httptest.NewRequest("GET", "/api/sources", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/sources", nil), user)
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -224,6 +229,7 @@ func TestSourcesHandler_List_Empty(t *testing.T) {
 
 func TestSourcesHandler_List_WithSources(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSourcesHandler(st)
 
 	// Add some sources
@@ -240,7 +246,7 @@ func TestSourcesHandler_List_WithSources(t *testing.T) {
 		WebhookSecret:  "secret2",
 	})
 
-	req := httptest.NewRequest("GET", "/api/sources", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/sources", nil), user)
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -271,6 +277,7 @@ func TestSourcesHandler_List_WithSources(t *testing.T) {
 
 func TestSourcesHandler_List_ByName(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSourcesHandler(st)
 
 	// Add sources
@@ -286,7 +293,7 @@ func TestSourcesHandler_List_ByName(t *testing.T) {
 	})
 
 	// Query by name
-	req := httptest.NewRequest("GET", "/api/sources?name=GitHub+Main", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/sources?name=GitHub+Main", nil), user)
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -311,10 +318,11 @@ func TestSourcesHandler_List_ByName(t *testing.T) {
 
 func TestSourcesHandler_List_ByName_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSourcesHandler(st)
 
 	// Query for non-existent source
-	req := httptest.NewRequest("GET", "/api/sources?name=NonExistent", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/sources?name=NonExistent", nil), user)
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)

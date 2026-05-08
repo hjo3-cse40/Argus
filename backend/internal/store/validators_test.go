@@ -284,14 +284,15 @@ func TestValidateSubsource_ValidURLs(t *testing.T) {
 
 func TestMemoryStore_AddPlatform_ValidationIntegration(t *testing.T) {
 	store := NewMemoryStore(100)
-	
+	owner := memoryTestUser(t, store)
+
 	// Test valid platform
 	validPlatform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 	}
 	
-	err := store.AddPlatform(validPlatform)
+	err := store.AddPlatform(owner, validPlatform)
 	if err != nil {
 		t.Errorf("AddPlatform() should accept valid platform, got error: %v", err)
 	}
@@ -302,7 +303,7 @@ func TestMemoryStore_AddPlatform_ValidationIntegration(t *testing.T) {
 		DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 	}
 	
-	err = store.AddPlatform(invalidPlatform)
+	err = store.AddPlatform(owner, invalidPlatform)
 	if err == nil {
 		t.Error("AddPlatform() should reject invalid platform name")
 	}
@@ -313,7 +314,7 @@ func TestMemoryStore_AddPlatform_ValidationIntegration(t *testing.T) {
 		DiscordWebhook: "https://example.com/webhook",
 	}
 	
-	err = store.AddPlatform(invalidWebhookPlatform)
+	err = store.AddPlatform(owner, invalidWebhookPlatform)
 	if err == nil {
 		t.Error("AddPlatform() should reject invalid webhook URL")
 	}
@@ -321,18 +322,18 @@ func TestMemoryStore_AddPlatform_ValidationIntegration(t *testing.T) {
 
 func TestMemoryStore_AddSubsource_ValidationIntegration(t *testing.T) {
 	store := NewMemoryStore(100)
-	
-	// First create a platform
+	owner := memoryTestUser(t, store)
+
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123456789/abcdef",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("Failed to create platform: %v", err)
 	}
 	
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) == 0 {
 		t.Fatal("No platforms found")
 	}
@@ -345,7 +346,7 @@ func TestMemoryStore_AddSubsource_ValidationIntegration(t *testing.T) {
 		Identifier: "UCxxx",
 	}
 	
-	err = store.AddSubsource(validSubsource)
+	err = store.AddSubsource(owner, validSubsource)
 	if err != nil {
 		t.Errorf("AddSubsource() should accept valid subsource, got error: %v", err)
 	}
@@ -357,7 +358,7 @@ func TestMemoryStore_AddSubsource_ValidationIntegration(t *testing.T) {
 		Identifier: "UCyyy",
 	}
 	
-	err = store.AddSubsource(emptyNameSubsource)
+	err = store.AddSubsource(owner, emptyNameSubsource)
 	if err == nil {
 		t.Error("AddSubsource() should reject empty name")
 	}
@@ -369,7 +370,7 @@ func TestMemoryStore_AddSubsource_ValidationIntegration(t *testing.T) {
 		Identifier: "",
 	}
 	
-	err = store.AddSubsource(emptyIdentifierSubsource)
+	err = store.AddSubsource(owner, emptyIdentifierSubsource)
 	if err == nil {
 		t.Error("AddSubsource() should reject empty identifier")
 	}
@@ -382,7 +383,7 @@ func TestMemoryStore_AddSubsource_ValidationIntegration(t *testing.T) {
 		URL:        "not-a-url",
 	}
 	
-	err = store.AddSubsource(malformedURLSubsource)
+	err = store.AddSubsource(owner, malformedURLSubsource)
 	if err == nil {
 		t.Error("AddSubsource() should reject malformed URL")
 	}

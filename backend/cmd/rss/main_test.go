@@ -8,17 +8,24 @@ import (
 
 func TestLoadSubsources(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	owner := store.User{Email: "rss-load-test@example.com", PasswordHash: "x"}
+	if err := st.CreateUser(owner); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	u, ok := st.GetUserByEmail(owner.Email)
+	if !ok {
+		t.Fatal("missing user")
+	}
 
-	// Add a platform
 	platform := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(u.ID, platform); err != nil {
 		t.Fatalf("failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(u.ID)
 	if len(platforms) == 0 {
 		t.Fatal("no platforms found")
 	}
@@ -30,7 +37,7 @@ func TestLoadSubsources(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	if err := st.AddSubsource(subsource1); err != nil {
+	if err := st.AddSubsource(u.ID, subsource1); err != nil {
 		t.Fatalf("failed to add subsource1: %v", err)
 	}
 
@@ -39,15 +46,12 @@ func TestLoadSubsources(t *testing.T) {
 		Name:       "NFL",
 		Identifier: "UCyyy",
 	}
-	if err := st.AddSubsource(subsource2); err != nil {
+	if err := st.AddSubsource(u.ID, subsource2); err != nil {
 		t.Fatalf("failed to add subsource2: %v", err)
 	}
 
 	// Test loadSubsources
-	subsources, err := loadSubsources(st)
-	if err != nil {
-		t.Fatalf("loadSubsources failed: %v", err)
-	}
+	subsources := loadSubsources(st)
 
 	if len(subsources) != 2 {
 		t.Errorf("expected 2 subsources, got %d", len(subsources))
@@ -67,10 +71,9 @@ func TestLoadSubsources(t *testing.T) {
 func TestLoadSubsources_Empty(t *testing.T) {
 	st := store.NewMemoryStore(100)
 
-	// Test with no subsources
-	_, err := loadSubsources(st)
-	if err == nil {
-		t.Error("expected error when no subsources configured, got nil")
+	subsources := loadSubsources(st)
+	if len(subsources) != 0 {
+		t.Errorf("expected no subsources, got %d", len(subsources))
 	}
 }
 

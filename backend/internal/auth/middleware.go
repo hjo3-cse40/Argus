@@ -61,6 +61,11 @@ func UserFromContext(ctx context.Context) (store.User, bool) {
 	return user, ok
 }
 
+// ContextWithUser attaches a user to the context (tests, dev servers).
+func ContextWithUser(ctx context.Context, user store.User) context.Context {
+	return context.WithValue(ctx, userContextKey, user)
+}
+
 // isExpired checks if a session has passed its expiry time
 func isExpired(session store.Session) bool {
 	return time.Now().UTC().After(session.ExpiresAt)

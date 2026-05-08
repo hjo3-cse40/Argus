@@ -9,6 +9,7 @@ import (
 
 	"github.com/lib/pq"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/store"
 )
 
@@ -22,6 +23,12 @@ func NewPlatformsHandler(st store.Store) *PlatformsHandler {
 
 // Create handles POST /api/platforms
 func (h *PlatformsHandler) Create(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse JSON request body
 	var req CreatePlatformRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -49,7 +56,7 @@ func (h *PlatformsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	platform := req.toStorePlatform()
 
 	// Add to store
-	if err := h.Store.AddPlatform(platform); err != nil {
+	if err := h.Store.AddPlatform(user.ID, platform); err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			w.Header().Set("Content-Type", "application/json")
@@ -80,9 +87,8 @@ func (h *PlatformsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the created platform (with generated ID and timestamp)
-	platforms := h.Store.ListPlatforms()
-	if len(platforms) == 0 {
+	createdPlatform, found := h.Store.GetPlatformByName(user.ID, platform.Name)
+	if !found {
 		log.Printf("Platform was added but not found in store")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -91,9 +97,6 @@ func (h *PlatformsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// Get the most recently added platform (last in list)
-	createdPlatform := platforms[len(platforms)-1]
 
 	// Convert to response (excludes webhook_secret)
 	response := toPlatformResponse(createdPlatform)
@@ -106,8 +109,13 @@ func (h *PlatformsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/platforms
 func (h *PlatformsHandler) List(w http.ResponseWriter, r *http.Request) {
-	// Retrieve all platforms from store
-	platforms := h.Store.ListPlatforms()
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	platforms := h.Store.ListPlatforms(user.ID)
 
 	// Convert to response format (excludes webhook_secret)
 	responses := make([]PlatformResponse, len(platforms))
@@ -123,6 +131,12 @@ func (h *PlatformsHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Get handles GET /api/platforms/:id
 func (h *PlatformsHandler) Get(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Extract id from path
 	id := r.PathValue("id")
 	if id == "" {
@@ -134,8 +148,7 @@ func (h *PlatformsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve platform from store
-	platform, found := h.Store.GetPlatform(id)
+	platform, found := h.Store.GetPlatform(user.ID, id)
 	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -156,6 +169,12 @@ func (h *PlatformsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update handles PUT /api/platforms/:id
 func (h *PlatformsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Extract id from path
 	id := r.PathValue("id")
 	if id == "" {
@@ -167,8 +186,7 @@ func (h *PlatformsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get existing platform to preserve name and created_at
-	existingPlatform, found := h.Store.GetPlatform(id)
+	existingPlatform, found := h.Store.GetPlatform(user.ID, id)
 	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -219,8 +237,7 @@ func (h *PlatformsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		FilterExcludeCombine:   excludeCombine,
 	}
 
-	// Update in store
-	if err := h.Store.UpdatePlatform(id, platform); err != nil {
+	if err := h.Store.UpdatePlatform(user.ID, id, platform); err != nil {
 		log.Printf("Failed to update platform: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -230,8 +247,7 @@ func (h *PlatformsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the updated platform
-	updatedPlatform, found := h.Store.GetPlatform(id)
+	updatedPlatform, found := h.Store.GetPlatform(user.ID, id)
 	if !found {
 		log.Printf("Platform was updated but not found in store")
 		w.Header().Set("Content-Type", "application/json")
@@ -253,7 +269,12 @@ func (h *PlatformsHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/platforms/:id
 func (h *PlatformsHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	// Extract id from path
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.PathValue("id")
 	log.Printf("DELETE /api/platforms/%s - Request received", id)
 	
@@ -267,8 +288,7 @@ func (h *PlatformsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if platform exists
-	_, found := h.Store.GetPlatform(id)
+	_, found := h.Store.GetPlatform(user.ID, id)
 	if !found {
 		log.Printf("DELETE /api/platforms/%s - Platform not found", id)
 		w.Header().Set("Content-Type", "application/json")
@@ -281,8 +301,7 @@ func (h *PlatformsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("DELETE /api/platforms/%s - Platform found, attempting delete", id)
 	
-	// Delete from store
-	if err := h.Store.DeletePlatform(id); err != nil {
+	if err := h.Store.DeletePlatform(user.ID, id); err != nil {
 		log.Printf("DELETE /api/platforms/%s - Failed to delete: %v", id, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)

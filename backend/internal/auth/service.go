@@ -16,12 +16,13 @@ const (
 
 // Service handles all auth operations
 type Service struct {
-	store store.Store
+	store        store.Store
+	cookieSecure bool
 }
 
-// NewService creates a new auth service
-func NewService(store store.Store) *Service {
-	return &Service{store: store}
+// NewService creates a new auth service. cookieSecure should be true in production (HTTPS).
+func NewService(store store.Store, cookieSecure bool) *Service {
+	return &Service{store: store, cookieSecure: cookieSecure}
 }
 
 // RegisterUser creates a new user with a hashed password
@@ -123,7 +124,7 @@ func (s *Service) setSessionCookie(w http.ResponseWriter, sessionID string, expi
 		Expires:  expiresAt,
 		MaxAge:   int(time.Until(expiresAt).Seconds()),
 		HttpOnly: true, // not accessible via JS
-		Secure:   true, // SET TO TRUE FOR HTTPS * IMPORTANT *
+		Secure:   s.cookieSecure,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 	})
@@ -136,7 +137,7 @@ func (s *Service) clearSessionCookie(w http.ResponseWriter) {
 		Value:    "",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   s.cookieSecure,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 		MaxAge:   -1,

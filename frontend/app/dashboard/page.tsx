@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { AppTopNav } from "@/components/AppTopNav";
+import { RequireAuth } from "@/components/RequireAuth";
 import {
   createFilter,
   deleteFilter,
@@ -346,6 +347,7 @@ export default function Dashboard() {
   const noPlatforms = !platformsLoading && platforms.length === 0 && !platformsError;
 
   return (
+    <RequireAuth>
     <div className="app-shell">
       <AppTopNav />
       <div className="app-body">
@@ -573,5 +575,6 @@ export default function Dashboard() {
         </main>
       </div>
     </div>
+    </RequireAuth>
   );
 }

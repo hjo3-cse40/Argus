@@ -12,6 +12,7 @@ import (
 
 func TestPlatformsHandler_Create_Success(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
 	reqBody := CreatePlatformRequest{
@@ -21,7 +22,7 @@ func TestPlatformsHandler_Create_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body)), user)
 	w := httptest.NewRecorder()
 
 	handler.Create(w, req)
@@ -51,6 +52,7 @@ func TestPlatformsHandler_Create_Success(t *testing.T) {
 
 func TestPlatformsHandler_Create_InvalidName(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
 	reqBody := CreatePlatformRequest{
@@ -59,7 +61,7 @@ func TestPlatformsHandler_Create_InvalidName(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body)), user)
 	w := httptest.NewRecorder()
 
 	handler.Create(w, req)
@@ -80,6 +82,7 @@ func TestPlatformsHandler_Create_InvalidName(t *testing.T) {
 
 func TestPlatformsHandler_Create_InvalidWebhook(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
 	reqBody := CreatePlatformRequest{
@@ -88,7 +91,7 @@ func TestPlatformsHandler_Create_InvalidWebhook(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body)), user)
 	w := httptest.NewRecorder()
 
 	handler.Create(w, req)
@@ -109,25 +112,24 @@ func TestPlatformsHandler_Create_InvalidWebhook(t *testing.T) {
 
 func TestPlatformsHandler_Create_DuplicateName(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	// Create first platform
 	platform := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	// Try to create duplicate
 	reqBody := CreatePlatformRequest{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/456/def",
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms", bytes.NewReader(body)), user)
 	w := httptest.NewRecorder()
 
 	handler.Create(w, req)
@@ -148,20 +150,20 @@ func TestPlatformsHandler_Create_DuplicateName(t *testing.T) {
 
 func TestPlatformsHandler_List(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	// Add platforms
 	platforms := []store.Platform{
 		{Name: "youtube", DiscordWebhook: "https://discord.com/api/webhooks/123/abc"},
 		{Name: "reddit", DiscordWebhook: "https://discord.com/api/webhooks/456/def"},
 	}
 	for _, p := range platforms {
-		if err := st.AddPlatform(p); err != nil {
+		if err := st.AddPlatform(user.ID, p); err != nil {
 			t.Fatalf("Failed to add platform: %v", err)
 		}
 	}
 
-	req := httptest.NewRequest("GET", "/api/platforms", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/platforms", nil), user)
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -182,25 +184,24 @@ func TestPlatformsHandler_List(t *testing.T) {
 
 func TestPlatformsHandler_Get_Success(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	// Add platform
 	platform := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	// Get the platform ID
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	if len(platforms) == 0 {
 		t.Fatal("No platforms found")
 	}
 	platformID := platforms[0].ID
 
-	req := httptest.NewRequest("GET", "/api/platforms/"+platformID, nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/platforms/"+platformID, nil), user)
 	req.SetPathValue("id", platformID)
 	w := httptest.NewRecorder()
 
@@ -225,9 +226,10 @@ func TestPlatformsHandler_Get_Success(t *testing.T) {
 
 func TestPlatformsHandler_Get_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	req := httptest.NewRequest("GET", "/api/platforms/nonexistent", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/platforms/nonexistent", nil), user)
 	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 
@@ -249,32 +251,30 @@ func TestPlatformsHandler_Get_NotFound(t *testing.T) {
 
 func TestPlatformsHandler_Update_Success(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	// Add platform
 	platform := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	// Get the platform ID
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	if len(platforms) == 0 {
 		t.Fatal("No platforms found")
 	}
 	platformID := platforms[0].ID
 
-	// Update platform
 	reqBody := UpdatePlatformRequest{
 		DiscordWebhook: "https://discord.com/api/webhooks/999/xyz",
 		WebhookSecret:  "newsecret",
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("PUT", "/api/platforms/"+platformID, bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("PUT", "/api/platforms/"+platformID, bytes.NewReader(body)), user)
 	req.SetPathValue("id", platformID)
 	w := httptest.NewRecorder()
 
@@ -296,31 +296,29 @@ func TestPlatformsHandler_Update_Success(t *testing.T) {
 
 func TestPlatformsHandler_Update_InvalidWebhook(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	// Add platform
 	platform := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	// Get the platform ID
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	if len(platforms) == 0 {
 		t.Fatal("No platforms found")
 	}
 	platformID := platforms[0].ID
 
-	// Try to update with invalid webhook
 	reqBody := UpdatePlatformRequest{
 		DiscordWebhook: "https://example.com/webhook",
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("PUT", "/api/platforms/"+platformID, bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("PUT", "/api/platforms/"+platformID, bytes.NewReader(body)), user)
 	req.SetPathValue("id", platformID)
 	w := httptest.NewRecorder()
 
@@ -342,6 +340,7 @@ func TestPlatformsHandler_Update_InvalidWebhook(t *testing.T) {
 
 func TestPlatformsHandler_Update_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
 	reqBody := UpdatePlatformRequest{
@@ -349,7 +348,7 @@ func TestPlatformsHandler_Update_NotFound(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("PUT", "/api/platforms/nonexistent", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("PUT", "/api/platforms/nonexistent", bytes.NewReader(body)), user)
 	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 
@@ -371,25 +370,24 @@ func TestPlatformsHandler_Update_NotFound(t *testing.T) {
 
 func TestPlatformsHandler_Delete_Success(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	// Add platform
 	platform := store.Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	// Get the platform ID
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	if len(platforms) == 0 {
 		t.Fatal("No platforms found")
 	}
 	platformID := platforms[0].ID
 
-	req := httptest.NewRequest("DELETE", "/api/platforms/"+platformID, nil)
+	req := withAuthUser(httptest.NewRequest("DELETE", "/api/platforms/"+platformID, nil), user)
 	req.SetPathValue("id", platformID)
 	w := httptest.NewRecorder()
 
@@ -399,8 +397,7 @@ func TestPlatformsHandler_Delete_Success(t *testing.T) {
 		t.Errorf("Expected status 204, got %d", w.Code)
 	}
 
-	// Verify platform was deleted
-	_, found := st.GetPlatform(platformID)
+	_, found := st.GetPlatform(user.ID, platformID)
 	if found {
 		t.Error("Platform should have been deleted")
 	}
@@ -408,9 +405,10 @@ func TestPlatformsHandler_Delete_Success(t *testing.T) {
 
 func TestPlatformsHandler_Delete_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewPlatformsHandler(st)
 
-	req := httptest.NewRequest("DELETE", "/api/platforms/nonexistent", nil)
+	req := withAuthUser(httptest.NewRequest("DELETE", "/api/platforms/nonexistent", nil), user)
 	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 

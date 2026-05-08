@@ -22,11 +22,13 @@ func TestProperty_SecretExclusionFromListResponses(t *testing.T) {
 
 	properties.Property("list response never contains webhook_secret", prop.ForAll(
 		func(name, sourceType, webhook, secret string) bool {
-			// Create store and handler
 			st := store.NewMemoryStore(100)
+			user, ok := propertyStoreAuthUser(st)
+			if !ok {
+				return false
+			}
 			handler := NewSourcesHandler(st)
 
-			// Add source with secret
 			source := store.Source{
 				Name:           name,
 				Type:           sourceType,
@@ -35,8 +37,7 @@ func TestProperty_SecretExclusionFromListResponses(t *testing.T) {
 			}
 			_ = st.AddSource(source)
 
-			// Make GET request
-			req := httptest.NewRequest("GET", "/api/sources", nil)
+			req := withAuthUser(httptest.NewRequest("GET", "/api/sources", nil), user)
 			w := httptest.NewRecorder()
 
 			handler.List(w, req)
@@ -99,11 +100,13 @@ func TestProperty_ResponseStructureCompleteness(t *testing.T) {
 
 	properties.Property("response contains all required fields", prop.ForAll(
 		func(name, sourceType, webhook string) bool {
-			// Create store and handler
 			st := store.NewMemoryStore(100)
+			user, ok := propertyStoreAuthUser(st)
+			if !ok {
+				return false
+			}
 			handler := NewSourcesHandler(st)
 
-			// Add source
 			source := store.Source{
 				Name:           name,
 				Type:           sourceType,
@@ -111,8 +114,7 @@ func TestProperty_ResponseStructureCompleteness(t *testing.T) {
 			}
 			_ = st.AddSource(source)
 
-			// Make GET request
-			req := httptest.NewRequest("GET", "/api/sources", nil)
+			req := withAuthUser(httptest.NewRequest("GET", "/api/sources", nil), user)
 			w := httptest.NewRecorder()
 
 			handler.List(w, req)

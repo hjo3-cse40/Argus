@@ -24,11 +24,15 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 	mux.HandleFunc("POST /debug/queued", markQueued.MarkQueued)
 
 	dh := handlers.NewDeliveriesHandler(st)
-	mux.HandleFunc("GET /deliveries", dh.List)
-	mux.HandleFunc("GET /api/deliveries", dh.List)
+	require := func(next http.HandlerFunc) http.Handler {
+		return authService.RequireAuth(next)
+	}
+
+	mux.Handle("GET /deliveries", require(dh.List))
+	mux.Handle("GET /api/deliveries", require(dh.List))
 	broadcaster := handlers.NewDeliveryBroadcaster()
 	stream := handlers.NewDeliveriesStreamHandler(broadcaster)
-	mux.HandleFunc("GET /api/deliveries/stream", stream.Stream)
+	mux.Handle("GET /api/deliveries/stream", require(stream.Stream))
 
 	mark := handlers.NewMarkDeliveredHandler(st, broadcaster)
 	mux.HandleFunc("POST /debug/delivered", mark.Mark)
@@ -42,30 +46,30 @@ func NewRouter(mqClient *mq.Client, st store.Store, authService *auth.Service) h
 
 	// Source management endpoints
 	sh := handlers.NewSourcesHandler(st)
-	mux.HandleFunc("POST /api/sources", sh.Create)
-	mux.HandleFunc("GET /api/sources", sh.List)
+	mux.Handle("POST /api/sources", require(sh.Create))
+	mux.Handle("GET /api/sources", require(sh.List))
 
 	// Platform management endpoints
 	ph := handlers.NewPlatformsHandler(st)
-	mux.HandleFunc("POST /api/platforms", ph.Create)
-	mux.HandleFunc("GET /api/platforms", ph.List)
-	mux.HandleFunc("GET /api/platforms/{id}", ph.Get)
-	mux.HandleFunc("PUT /api/platforms/{id}", ph.Update)
-	mux.HandleFunc("DELETE /api/platforms/{id}", ph.Delete)
+	mux.Handle("POST /api/platforms", require(ph.Create))
+	mux.Handle("GET /api/platforms", require(ph.List))
+	mux.Handle("GET /api/platforms/{id}", require(ph.Get))
+	mux.Handle("PUT /api/platforms/{id}", require(ph.Update))
+	mux.Handle("DELETE /api/platforms/{id}", require(ph.Delete))
 
 	// Subsource management endpoints
 	subh := handlers.NewSubsourcesHandler(st)
-	mux.HandleFunc("POST /api/platforms/{platform_id}/subsources", subh.Create)
-	mux.HandleFunc("GET /api/platforms/{platform_id}/subsources", subh.ListByPlatform)
-	mux.HandleFunc("GET /api/subsources/{id}", subh.Get)
-	mux.HandleFunc("PUT /api/subsources/{id}", subh.Update)
-	mux.HandleFunc("DELETE /api/subsources/{id}", subh.Delete)
+	mux.Handle("POST /api/platforms/{platform_id}/subsources", require(subh.Create))
+	mux.Handle("GET /api/platforms/{platform_id}/subsources", require(subh.ListByPlatform))
+	mux.Handle("GET /api/subsources/{id}", require(subh.Get))
+	mux.Handle("PUT /api/subsources/{id}", require(subh.Update))
+	mux.Handle("DELETE /api/subsources/{id}", require(subh.Delete))
 
 	// Filter management endpoints
 	fh := handlers.NewFiltersHandler(st)
-	mux.HandleFunc("POST /api/platforms/{platform_id}/filters", fh.Create)
-	mux.HandleFunc("GET /api/platforms/{platform_id}/filters", fh.List)
-	mux.HandleFunc("DELETE /api/filters/{id}", fh.Delete)
+	mux.Handle("POST /api/platforms/{platform_id}/filters", require(fh.Create))
+	mux.Handle("GET /api/platforms/{platform_id}/filters", require(fh.List))
+	mux.Handle("DELETE /api/filters/{id}", require(fh.Delete))
 
 	// Auth endpoints
 	ah := handlers.NewAuthHandler(authService)

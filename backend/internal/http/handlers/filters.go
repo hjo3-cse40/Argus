@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/store"
 )
 
@@ -55,6 +56,12 @@ func (r *CreateFilterRequest) Validate() *ValidationError {
 
 // Create handles POST /api/platforms/{platform_id}/filters
 func (h *FiltersHandler) Create(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	platformID := r.PathValue("platform_id")
 	if platformID == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -63,7 +70,7 @@ func (h *FiltersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, found := h.Store.GetPlatform(platformID)
+	_, found := h.Store.GetPlatform(user.ID, platformID)
 	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -98,15 +105,14 @@ func (h *FiltersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Pattern:    req.Pattern,
 	}
 
-	if err := h.Store.AddFilter(f); err != nil {
+	if err := h.Store.AddFilter(user.ID, f); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to create filter"})
 		return
 	}
 
-	// Return the most recently added filter for this platform
-	filters := h.Store.ListFilters(platformID)
+	filters := h.Store.ListFilters(user.ID, platformID)
 	if len(filters) == 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -123,6 +129,12 @@ func (h *FiltersHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/platforms/{platform_id}/filters
 func (h *FiltersHandler) List(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	platformID := r.PathValue("platform_id")
 	if platformID == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -131,7 +143,7 @@ func (h *FiltersHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filters := h.Store.ListFilters(platformID)
+	filters := h.Store.ListFilters(user.ID, platformID)
 
 	responses := make([]FilterResponse, len(filters))
 	for i, f := range filters {
@@ -145,6 +157,12 @@ func (h *FiltersHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/filters/{id}
 func (h *FiltersHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.PathValue("id")
 	if id == "" {
 		w.Header().Set("Content-Type", "application/json")
@@ -153,8 +171,13 @@ func (h *FiltersHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Store.DeleteFilter(id); err != nil {
+	if err := h.Store.DeleteFilter(user.ID, id); err != nil {
 		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(err.Error(), "not found") {
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "Filter not found"})
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "Failed to delete filter"})
 		return

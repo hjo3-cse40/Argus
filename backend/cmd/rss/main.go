@@ -159,14 +159,6 @@ func main() {
 		log.Fatalf("failed to declare queue: %v", err)
 	}
 
-	// Load subsources from database
-	subsources, err := loadSubsources(st)
-	if err != nil {
-		log.Fatalf("failed to load subsources: %v", err)
-	}
-
-	log.Printf("Polling %d subsource(s)", len(subsources))
-
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -179,7 +171,13 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	for {
-		processFeeds(client, subsources, cfg.RSSHub.BaseURL, mqClient, seenIDs, st)
+		subsources := loadSubsources(st)
+		if len(subsources) == 0 {
+			log.Printf("no subsources configured; idle until next check (every 5m)")
+		} else {
+			log.Printf("polling %d subsource(s)", len(subsources))
+			processFeeds(client, subsources, cfg.RSSHub.BaseURL, mqClient, seenIDs, st)
+		}
 		saveSeenIDs(seenIDsPath(), seenIDs)
 
 		select {
@@ -191,18 +189,10 @@ func main() {
 	}
 }
 
-// loadSubsources queries the database for all active subsources with platform information
-func loadSubsources(st store.Store) ([]store.SubsourceWithPlatform, error) {
-	subsources := st.ListAllSubsources()
-	if len(subsources) == 0 {
-		return nil, fmt.Errorf("no subsources configured in database")
-	}
-	
-	for _, s := range subsources {
-		log.Printf("Loaded subsource: %s - %s (identifier: %s)", s.PlatformName, s.Name, s.Identifier)
-	}
-	
-	return subsources, nil
+// loadSubsources queries the database for all active subsources with platform information.
+// An empty database is valid: the poller stays up and reloads on each tick.
+func loadSubsources(st store.Store) []store.SubsourceWithPlatform {
+	return st.ListAllSubsources()
 }
 
 // youTubeChannelIDRe matches a full YouTube channel id (e.g. UC…). Handles/usernames must use /youtube/user/.
@@ -403,6 +393,7 @@ func processFeeds(client *http.Client, subsources []store.SubsourceWithPlatform,
 				Title:       event.Title,
 				URL:         event.URL,
 				SubsourceID: &sid,
+				UserID:      subsource.UserID,
 			})
 
 			log.Printf("✓ [%s - %s] %s — %s", subsource.PlatformName, subsource.Name, feedTitle, item.Title)

@@ -95,11 +95,13 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 
 	// If the event is tied to a known subsource/platform, evaluate keyword filters
 	// before enqueueing so blocked events can be reported immediately to the caller.
+	var deliveryUserID string
 	if subsourceID != nil {
 		if subsource, found := h.Store.GetSubsource(*subsourceID); found {
-			filters := h.Store.ListFilters(subsource.PlatformID)
+			deliveryUserID = subsource.UserID
+			filters := h.Store.ListFilters(subsource.UserID, subsource.PlatformID)
 			opts := filter.FilterCombineOpts{}
-			if plat, ok := h.Store.GetPlatform(subsource.PlatformID); ok {
+			if plat, ok := h.Store.GetPlatformUnscoped(subsource.PlatformID); ok {
 				opts.IncludeCombine = plat.FilterIncludeCombine
 				opts.ExcludeCombine = plat.FilterExcludeCombine
 			}
@@ -123,6 +125,7 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		Title:       ev.Title,
 		URL:         ev.URL,
 		SubsourceID: subsourceID,
+		UserID:      deliveryUserID,
 	})
 
 	w.Header().Set("Content-Type", "application/json")

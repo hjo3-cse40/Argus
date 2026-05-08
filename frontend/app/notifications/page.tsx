@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { AppTopNav } from "@/components/AppTopNav";
+import { RequireAuth } from "@/components/RequireAuth";
 import { fetchDeliveries, type Delivery } from "@/lib/api";
 import "../app-shell.css";
 
@@ -167,6 +168,7 @@ export default function NotificationsPage() {
   const canGoNext = hasMore && !loading;
 
   return (
+    <RequireAuth>
     <div className="app-shell">
       <AppTopNav />
       <div className="app-body">
@@ -256,5 +258,6 @@ export default function NotificationsPage() {
         </main>
       </div>
     </div>
+    </RequireAuth>
   );
 }

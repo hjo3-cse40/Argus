@@ -12,6 +12,7 @@ import (
 
 func TestSubsourcesHandler_Create_Success(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform first
@@ -19,11 +20,11 @@ func TestSubsourcesHandler_Create_Success(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	if len(platforms) == 0 {
 		t.Fatal("No platforms found after adding")
 	}
@@ -36,7 +37,7 @@ func TestSubsourcesHandler_Create_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body)), user)
 	req.SetPathValue("platform_id", platformID)
 	w := httptest.NewRecorder()
 
@@ -73,6 +74,7 @@ func TestSubsourcesHandler_Create_Success(t *testing.T) {
 
 func TestSubsourcesHandler_Create_InvalidPlatformID(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	reqBody := CreateSubsourceRequest{
@@ -81,7 +83,7 @@ func TestSubsourcesHandler_Create_InvalidPlatformID(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms/nonexistent/subsources", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms/nonexistent/subsources", bytes.NewReader(body)), user)
 	req.SetPathValue("platform_id", "nonexistent")
 	w := httptest.NewRecorder()
 
@@ -109,6 +111,7 @@ func TestSubsourcesHandler_Create_InvalidPlatformID(t *testing.T) {
 
 func TestSubsourcesHandler_Create_EmptyName(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform first
@@ -116,11 +119,11 @@ func TestSubsourcesHandler_Create_EmptyName(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	reqBody := CreateSubsourceRequest{
@@ -129,7 +132,7 @@ func TestSubsourcesHandler_Create_EmptyName(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body)), user)
 	req.SetPathValue("platform_id", platformID)
 	w := httptest.NewRecorder()
 
@@ -151,6 +154,7 @@ func TestSubsourcesHandler_Create_EmptyName(t *testing.T) {
 
 func TestSubsourcesHandler_Create_EmptyIdentifier(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform first
@@ -158,11 +162,11 @@ func TestSubsourcesHandler_Create_EmptyIdentifier(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	reqBody := CreateSubsourceRequest{
@@ -171,7 +175,7 @@ func TestSubsourcesHandler_Create_EmptyIdentifier(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body)), user)
 	req.SetPathValue("platform_id", platformID)
 	w := httptest.NewRecorder()
 
@@ -193,6 +197,7 @@ func TestSubsourcesHandler_Create_EmptyIdentifier(t *testing.T) {
 
 func TestSubsourcesHandler_Create_DuplicateIdentifier(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform first
@@ -200,11 +205,11 @@ func TestSubsourcesHandler_Create_DuplicateIdentifier(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	// Create first subsource
@@ -213,7 +218,7 @@ func TestSubsourcesHandler_Create_DuplicateIdentifier(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	if err := st.AddSubsource(subsource); err != nil {
+	if err := st.AddSubsource(user.ID, subsource); err != nil {
 		t.Fatalf("Failed to add subsource: %v", err)
 	}
 
@@ -224,7 +229,7 @@ func TestSubsourcesHandler_Create_DuplicateIdentifier(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("POST", "/api/platforms/"+platformID+"/subsources", bytes.NewReader(body)), user)
 	req.SetPathValue("platform_id", platformID)
 	w := httptest.NewRecorder()
 
@@ -246,6 +251,7 @@ func TestSubsourcesHandler_Create_DuplicateIdentifier(t *testing.T) {
 
 func TestSubsourcesHandler_ListByPlatform(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform
@@ -253,11 +259,11 @@ func TestSubsourcesHandler_ListByPlatform(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	// Create subsources
@@ -271,14 +277,14 @@ func TestSubsourcesHandler_ListByPlatform(t *testing.T) {
 		Name:       "NFL",
 		Identifier: "UCyyy",
 	}
-	if err := st.AddSubsource(subsource1); err != nil {
+	if err := st.AddSubsource(user.ID, subsource1); err != nil {
 		t.Fatalf("Failed to add subsource1: %v", err)
 	}
-	if err := st.AddSubsource(subsource2); err != nil {
+	if err := st.AddSubsource(user.ID, subsource2); err != nil {
 		t.Fatalf("Failed to add subsource2: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/api/platforms/"+platformID+"/subsources", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/platforms/"+platformID+"/subsources", nil), user)
 	req.SetPathValue("platform_id", platformID)
 	w := httptest.NewRecorder()
 
@@ -307,6 +313,7 @@ func TestSubsourcesHandler_ListByPlatform(t *testing.T) {
 
 func TestSubsourcesHandler_Get(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform
@@ -314,11 +321,11 @@ func TestSubsourcesHandler_Get(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	// Create subsource
@@ -327,14 +334,14 @@ func TestSubsourcesHandler_Get(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	if err := st.AddSubsource(subsource); err != nil {
+	if err := st.AddSubsource(user.ID, subsource); err != nil {
 		t.Fatalf("Failed to add subsource: %v", err)
 	}
 
-	subsources := st.ListSubsources(platformID)
+	subsources := st.ListSubsources(user.ID, platformID)
 	subsourceID := subsources[0].ID
 
-	req := httptest.NewRequest("GET", "/api/subsources/"+subsourceID, nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/subsources/"+subsourceID, nil), user)
 	req.SetPathValue("id", subsourceID)
 	w := httptest.NewRecorder()
 
@@ -359,9 +366,10 @@ func TestSubsourcesHandler_Get(t *testing.T) {
 
 func TestSubsourcesHandler_Get_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
-	req := httptest.NewRequest("GET", "/api/subsources/nonexistent", nil)
+	req := withAuthUser(httptest.NewRequest("GET", "/api/subsources/nonexistent", nil), user)
 	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 
@@ -383,6 +391,7 @@ func TestSubsourcesHandler_Get_NotFound(t *testing.T) {
 
 func TestSubsourcesHandler_Update(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform
@@ -390,11 +399,11 @@ func TestSubsourcesHandler_Update(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	// Create subsource
@@ -403,11 +412,11 @@ func TestSubsourcesHandler_Update(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	if err := st.AddSubsource(subsource); err != nil {
+	if err := st.AddSubsource(user.ID, subsource); err != nil {
 		t.Fatalf("Failed to add subsource: %v", err)
 	}
 
-	subsources := st.ListSubsources(platformID)
+	subsources := st.ListSubsources(user.ID, platformID)
 	subsourceID := subsources[0].ID
 
 	reqBody := UpdateSubsourceRequest{
@@ -417,7 +426,7 @@ func TestSubsourcesHandler_Update(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("PUT", "/api/subsources/"+subsourceID, bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("PUT", "/api/subsources/"+subsourceID, bytes.NewReader(body)), user)
 	req.SetPathValue("id", subsourceID)
 	w := httptest.NewRecorder()
 
@@ -445,6 +454,7 @@ func TestSubsourcesHandler_Update(t *testing.T) {
 
 func TestSubsourcesHandler_Update_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	reqBody := UpdateSubsourceRequest{
@@ -452,7 +462,7 @@ func TestSubsourcesHandler_Update_NotFound(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("PUT", "/api/subsources/nonexistent", bytes.NewReader(body))
+	req := withAuthUser(httptest.NewRequest("PUT", "/api/subsources/nonexistent", bytes.NewReader(body)), user)
 	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 
@@ -474,6 +484,7 @@ func TestSubsourcesHandler_Update_NotFound(t *testing.T) {
 
 func TestSubsourcesHandler_Delete(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
 	// Create a platform
@@ -481,11 +492,11 @@ func TestSubsourcesHandler_Delete(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/123/abc",
 	}
-	if err := st.AddPlatform(platform); err != nil {
+	if err := st.AddPlatform(user.ID, platform); err != nil {
 		t.Fatalf("Failed to add platform: %v", err)
 	}
 
-	platforms := st.ListPlatforms()
+	platforms := st.ListPlatforms(user.ID)
 	platformID := platforms[0].ID
 
 	// Create subsource
@@ -494,14 +505,14 @@ func TestSubsourcesHandler_Delete(t *testing.T) {
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	if err := st.AddSubsource(subsource); err != nil {
+	if err := st.AddSubsource(user.ID, subsource); err != nil {
 		t.Fatalf("Failed to add subsource: %v", err)
 	}
 
-	subsources := st.ListSubsources(platformID)
+	subsources := st.ListSubsources(user.ID, platformID)
 	subsourceID := subsources[0].ID
 
-	req := httptest.NewRequest("DELETE", "/api/subsources/"+subsourceID, nil)
+	req := withAuthUser(httptest.NewRequest("DELETE", "/api/subsources/"+subsourceID, nil), user)
 	req.SetPathValue("id", subsourceID)
 	w := httptest.NewRecorder()
 
@@ -520,9 +531,10 @@ func TestSubsourcesHandler_Delete(t *testing.T) {
 
 func TestSubsourcesHandler_Delete_NotFound(t *testing.T) {
 	st := store.NewMemoryStore(100)
+	user := testMemoryStoreUser(t, st)
 	handler := NewSubsourcesHandler(st)
 
-	req := httptest.NewRequest("DELETE", "/api/subsources/nonexistent", nil)
+	req := withAuthUser(httptest.NewRequest("DELETE", "/api/subsources/nonexistent", nil), user)
 	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 

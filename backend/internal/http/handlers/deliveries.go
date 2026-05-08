@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"argus-backend/internal/auth"
 	"argus-backend/internal/store"
 )
 
@@ -22,9 +23,14 @@ func NewDeliveriesHandler(st store.Store) *DeliveriesHandler {
 }
 
 func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok || user.ID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 
-	
 	subsourceID := r.URL.Query().Get("subsource_id")
 	platformID := r.URL.Query().Get("platform_id")
 	// Check for filtering query parameters(status: success, pending, failed)
@@ -49,11 +55,11 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	var deliveries []store.Delivery
 
 	if subsourceID != "" {
-		deliveries = h.Store.ListDeliveriesBySubsource(subsourceID)
+		deliveries = h.Store.ListDeliveriesBySubsource(user.ID, subsourceID)
 	} else if platformID != "" {
-		deliveries = h.Store.ListDeliveriesByPlatform(platformID)
+		deliveries = h.Store.ListDeliveriesByPlatform(user.ID, platformID)
 	} else {
-		deliveries = h.Store.List()
+		deliveries = h.Store.List(user.ID)
 	}
 
 	// Filter by status if requested

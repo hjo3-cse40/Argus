@@ -8,6 +8,7 @@ import (
 // Test AddPlatform creates platform and returns no error
 func TestAddPlatform_Success(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	platform := Platform{
 		Name:           "youtube",
@@ -15,12 +16,12 @@ func TestAddPlatform_Success(t *testing.T) {
 		WebhookSecret:  "secret123",
 	}
 
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
@@ -47,12 +48,13 @@ func TestAddPlatform_Success(t *testing.T) {
 // Note: MemoryStore doesn't enforce uniqueness, but PostgreSQL will
 func TestAddPlatform_DuplicateName(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	platform1 := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test1",
 	}
-	err := store.AddPlatform(platform1)
+	err := store.AddPlatform(owner, platform1)
 	if err != nil {
 		t.Fatalf("First AddPlatform failed: %v", err)
 	}
@@ -61,18 +63,16 @@ func TestAddPlatform_DuplicateName(t *testing.T) {
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test2",
 	}
-	err = store.AddPlatform(platform2)
+	err = store.AddPlatform(owner, platform2)
 	if err == nil {
 		t.Fatal("Second AddPlatform should have failed due to duplicate name")
 	}
 
-	// Verify error message mentions duplicate name
 	if !strings.Contains(err.Error(), "platform name already exists") {
 		t.Errorf("Expected duplicate name error, got: %v", err)
 	}
 
-	// Verify only one platform exists
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
@@ -81,8 +81,8 @@ func TestAddPlatform_DuplicateName(t *testing.T) {
 // Test ListPlatforms returns all platforms in correct order
 func TestListPlatforms_OrderedByName(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
-	// Add platforms in non-alphabetical order
 	platforms := []Platform{
 		{Name: "x", DiscordWebhook: "https://discord.com/api/webhooks/test1"},
 		{Name: "youtube", DiscordWebhook: "https://discord.com/api/webhooks/test2"},
@@ -90,18 +90,17 @@ func TestListPlatforms_OrderedByName(t *testing.T) {
 	}
 
 	for _, p := range platforms {
-		err := store.AddPlatform(p)
+		err := store.AddPlatform(owner, p)
 		if err != nil {
 			t.Fatalf("AddPlatform failed: %v", err)
 		}
 	}
 
-	result := store.ListPlatforms()
+	result := store.ListPlatforms(owner)
 	if len(result) != 3 {
 		t.Fatalf("Expected 3 platforms, got %d", len(result))
 	}
 
-	// Verify alphabetical order: reddit, x, youtube
 	expectedOrder := []string{"reddit", "x", "youtube"}
 	for i, expected := range expectedOrder {
 		if result[i].Name != expected {
@@ -113,23 +112,24 @@ func TestListPlatforms_OrderedByName(t *testing.T) {
 // Test GetPlatform retrieves correct platform
 func TestGetPlatform_Success(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
 	platformID := platforms[0].ID
 
-	retrieved, found := store.GetPlatform(platformID)
+	retrieved, found := store.GetPlatform(owner, platformID)
 	if !found {
 		t.Fatal("Expected to find platform")
 	}
@@ -145,8 +145,9 @@ func TestGetPlatform_Success(t *testing.T) {
 // Test GetPlatform with non-existent ID
 func TestGetPlatform_NotFound(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
-	_, found := store.GetPlatform("non-existent-id")
+	_, found := store.GetPlatform(owner, "non-existent-id")
 	if found {
 		t.Error("Expected not to find platform with non-existent ID")
 	}
@@ -155,17 +156,18 @@ func TestGetPlatform_NotFound(t *testing.T) {
 // Test GetPlatformByName retrieves correct platform
 func TestGetPlatformByName_Success(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	retrieved, found := store.GetPlatformByName("youtube")
+	retrieved, found := store.GetPlatformByName(owner, "youtube")
 	if !found {
 		t.Fatal("Expected to find platform by name")
 	}
@@ -178,8 +180,9 @@ func TestGetPlatformByName_Success(t *testing.T) {
 // Test GetPlatformByName with non-existent name
 func TestGetPlatformByName_NotFound(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
-	_, found := store.GetPlatformByName("non-existent")
+	_, found := store.GetPlatformByName(owner, "non-existent")
 	if found {
 		t.Error("Expected not to find platform with non-existent name")
 	}
@@ -188,47 +191,44 @@ func TestGetPlatformByName_NotFound(t *testing.T) {
 // Test UpdatePlatform modifies webhook but preserves created_at
 func TestUpdatePlatform_PreservesCreatedAt(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test1",
 		WebhookSecret:  "secret1",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
 	original := platforms[0]
 	originalCreatedAt := original.CreatedAt
 
-	// Update platform
 	updated := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test2",
 		WebhookSecret:  "secret2",
 	}
-	err = store.UpdatePlatform(original.ID, updated)
+	err = store.UpdatePlatform(owner, original.ID, updated)
 	if err != nil {
 		t.Fatalf("UpdatePlatform failed: %v", err)
 	}
 
-	// Retrieve updated platform
-	result, found := store.GetPlatform(original.ID)
+	result, found := store.GetPlatform(owner, original.ID)
 	if !found {
 		t.Fatal("Expected to find updated platform")
 	}
 
-	// Verify created_at is preserved
 	if !result.CreatedAt.Equal(originalCreatedAt) {
 		t.Errorf("Expected CreatedAt to be preserved: original=%v, updated=%v", originalCreatedAt, result.CreatedAt)
 	}
 
-	// Verify other fields are updated
 	if result.DiscordWebhook != "https://discord.com/api/webhooks/test2" {
 		t.Errorf("Expected webhook 'https://discord.com/api/webhooks/test2', got '%s'", result.DiscordWebhook)
 	}
@@ -240,30 +240,29 @@ func TestUpdatePlatform_PreservesCreatedAt(t *testing.T) {
 // Test DeletePlatform removes platform and cascades to subsources
 func TestDeletePlatform_CascadesToSubsources(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
-	// Create platform
 	platform := Platform{
 		Name:           "youtube",
 		DiscordWebhook: "https://discord.com/api/webhooks/test",
 	}
-	err := store.AddPlatform(platform)
+	err := store.AddPlatform(owner, platform)
 	if err != nil {
 		t.Fatalf("AddPlatform failed: %v", err)
 	}
 
-	platforms := store.ListPlatforms()
+	platforms := store.ListPlatforms(owner)
 	if len(platforms) != 1 {
 		t.Fatalf("Expected 1 platform, got %d", len(platforms))
 	}
 	platformID := platforms[0].ID
 
-	// Create subsources
 	subsource1 := Subsource{
 		PlatformID: platformID,
 		Name:       "NBA",
 		Identifier: "UCxxx",
 	}
-	err = store.AddSubsource(subsource1)
+	err = store.AddSubsource(owner, subsource1)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
@@ -273,30 +272,26 @@ func TestDeletePlatform_CascadesToSubsources(t *testing.T) {
 		Name:       "NFL",
 		Identifier: "UCyyy",
 	}
-	err = store.AddSubsource(subsource2)
+	err = store.AddSubsource(owner, subsource2)
 	if err != nil {
 		t.Fatalf("AddSubsource failed: %v", err)
 	}
 
-	// Verify subsources exist
 	subsources := store.ListAllSubsources()
 	if len(subsources) != 2 {
 		t.Fatalf("Expected 2 subsources, got %d", len(subsources))
 	}
 
-	// Delete platform
-	err = store.DeletePlatform(platformID)
+	err = store.DeletePlatform(owner, platformID)
 	if err != nil {
 		t.Fatalf("DeletePlatform failed: %v", err)
 	}
 
-	// Verify platform is deleted
-	platforms = store.ListPlatforms()
+	platforms = store.ListPlatforms(owner)
 	if len(platforms) != 0 {
 		t.Errorf("Expected 0 platforms after deletion, got %d", len(platforms))
 	}
 
-	// Verify subsources are deleted (cascade)
 	subsources = store.ListAllSubsources()
 	if len(subsources) != 0 {
 		t.Errorf("Expected 0 subsources after platform deletion (cascade), got %d", len(subsources))
@@ -306,9 +301,9 @@ func TestDeletePlatform_CascadesToSubsources(t *testing.T) {
 // Test DeletePlatform with non-existent ID
 func TestDeletePlatform_NotFound(t *testing.T) {
 	store := NewMemoryStore(100)
+	owner := memoryTestUser(t, store)
 
-	err := store.DeletePlatform("non-existent-id")
-	// MemoryStore doesn't return error for non-existent ID
+	err := store.DeletePlatform(owner, "non-existent-id")
 	if err != nil {
 		t.Errorf("Expected no error for non-existent ID, got: %v", err)
 	}

@@ -101,8 +101,12 @@ async function readJson<T>(res: Response, fallback: string): Promise<T> {
 }
 
 async function doFetch(input: string, init?: RequestInit): Promise<Response> {
+  const merged: RequestInit = {
+    ...init,
+    credentials: "include",
+  };
   try {
-    return await fetch(input, init);
+    return await fetch(input, merged);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
     throw new Error(
@@ -301,11 +305,11 @@ export type LoginPayload = {
 };
 
 export type LoginResponse = {
-  token: string;
+  message?: string;
 };
 
 export async function login(body: LoginPayload): Promise<LoginResponse> {
-  const res = await doFetch(apiUrl("/api/login"), {
+  const res = await doFetch(apiUrl("/api/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -314,11 +318,33 @@ export async function login(body: LoginPayload): Promise<LoginResponse> {
 }
 
 export async function register(body: LoginPayload): Promise<void> {
-  const res = await doFetch(apiUrl("/api/register"), {
+  const res = await doFetch(apiUrl("/api/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (res.status === 204 || res.ok) return;
   throw new Error(await errorMessageFromResponse(res, "Registration failed"));
+}
+
+export type CurrentUser = {
+  id: string;
+  email: string;
+  created_at: string;
+};
+
+/** Returns the session user, or null if not authenticated. */
+export async function fetchCurrentUser(): Promise<CurrentUser | null> {
+  const res = await doFetch(apiUrl("/api/auth/me"));
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    throw new Error(await errorMessageFromResponse(res, "Could not load session"));
+  }
+  return readJson<CurrentUser>(res, "Could not load session");
+}
+
+export async function logout(): Promise<void> {
+  const res = await doFetch(apiUrl("/api/auth/logout"), { method: "POST" });
+  if (res.ok || res.status === 401) return;
+  throw new Error(await errorMessageFromResponse(res, "Logout failed"));
 }

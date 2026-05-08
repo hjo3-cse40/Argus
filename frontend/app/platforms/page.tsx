@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { AppTopNav } from "@/components/AppTopNav";
+import { RequireAuth } from "@/components/RequireAuth";
 import { deriveSubsourceIdentifierFromUrl } from "@/lib/deriveSubsourceFromUrl";
 import {
   createPlatform,
@@ -253,6 +254,7 @@ export default function PlatformsPage() {
   };
 
   return (
+    <RequireAuth>
     <div className="app-shell">
       <AppTopNav />
       <div className="app-body">
@@ -609,5 +611,6 @@ export default function PlatformsPage() {
         </main>
       </div>
     </div>
+    </RequireAuth>
   );
 }

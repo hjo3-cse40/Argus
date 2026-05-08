@@ -118,10 +118,31 @@ var migrations = []string{
 	// Per-platform AND/OR for multiple keyword filters (default any = legacy OR behavior)
 	`ALTER TABLE platforms ADD COLUMN IF NOT EXISTS filter_include_combine TEXT NOT NULL DEFAULT 'any'`,
 	`ALTER TABLE platforms ADD COLUMN IF NOT EXISTS filter_exclude_combine TEXT NOT NULL DEFAULT 'any'`,
+
+	// Per-user ownership: legacy rows keep user_id NULL and are hidden from the API.
+	`ALTER TABLE platforms ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE`,
+	`DROP INDEX IF EXISTS idx_platforms_name`,
+	// Table was created with "name UNIQUE"; that constraint is global and blocks per-user duplicates.
+	`ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_name_key`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS idx_platforms_user_name ON platforms(user_id, name) WHERE user_id IS NOT NULL`,
+	`ALTER TABLE platforms ALTER COLUMN discord_webhook DROP NOT NULL`,
+
+	`ALTER TABLE subsources ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE`,
+	`UPDATE subsources s SET user_id = p.user_id FROM platforms p WHERE s.platform_id = p.id AND s.user_id IS NULL AND p.user_id IS NOT NULL`,
+
+	`ALTER TABLE destination_filters ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE`,
+	`UPDATE destination_filters f SET user_id = p.user_id FROM platforms p WHERE f.platform_id = p.id AND f.user_id IS NULL AND p.user_id IS NOT NULL`,
+
+	`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL`,
+	`CREATE INDEX IF NOT EXISTS idx_deliveries_user_id ON deliveries(user_id)`,
 }
 
-// MigrateFlatToHierarchical migrates data from the flat sources table to hierarchical platforms and subsources tables
-func MigrateFlatToHierarchical(store Store) error {
+// MigrateFlatToHierarchical migrates data from the flat sources table to hierarchical platforms and subsources tables.
+// ownerUserID must be a valid users.id; all created platforms/subsources are scoped to that user.
+func MigrateFlatToHierarchical(store Store, ownerUserID string) error {
+	if ownerUserID == "" {
+		return fmt.Errorf("MigrateFlatToHierarchical: ownerUserID is required")
+	}
 	// This migration function transforms the flat sources table into hierarchical structure
 	// It should only be called once after the schema is set up but before dropping the sources table
 
@@ -161,8 +182,7 @@ func MigrateFlatToHierarchical(store Store) error {
 	// Step 3: Create platform records for each unique type
 	platformIDs := make(map[string]string) // type -> platform_id
 	for platformType, data := range platformData {
-		// Check if platform already exists (idempotency)
-		existingPlatform, found := store.GetPlatformByName(platformType)
+		existingPlatform, found := store.GetPlatformByName(ownerUserID, platformType)
 		if found {
 			platformIDs[platformType] = existingPlatform.ID
 			continue
@@ -175,12 +195,11 @@ func MigrateFlatToHierarchical(store Store) error {
 			CreatedAt:      data.createdAt,
 		}
 
-		if err := store.AddPlatform(platform); err != nil {
+		if err := store.AddPlatform(ownerUserID, platform); err != nil {
 			return fmt.Errorf("failed to create platform %s: %w", platformType, err)
 		}
 
-		// Get the created platform to retrieve its ID
-		createdPlatform, found := store.GetPlatformByName(platformType)
+		createdPlatform, found := store.GetPlatformByName(ownerUserID, platformType)
 		if !found {
 			return fmt.Errorf("failed to retrieve created platform: %s", platformType)
 		}
@@ -198,7 +217,7 @@ func MigrateFlatToHierarchical(store Store) error {
 		}
 
 		// Check if subsource already exists (idempotency)
-		existingSubsources := store.ListSubsources(platformID)
+		existingSubsources := store.ListSubsources(ownerUserID, platformID)
 		subsourceExists := false
 		for _, existing := range existingSubsources {
 			if existing.Identifier == identifier {
@@ -221,7 +240,7 @@ func MigrateFlatToHierarchical(store Store) error {
 			CreatedAt:  source.CreatedAt,
 		}
 
-		if err := store.AddSubsource(subsource); err != nil {
+		if err := store.AddSubsource(ownerUserID, subsource); err != nil {
 			return fmt.Errorf("failed to create subsource %s: %w", source.Name, err)
 		}
 	}
