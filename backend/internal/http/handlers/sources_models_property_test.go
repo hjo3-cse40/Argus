@@ -46,8 +46,8 @@ func TestProperty_ValidationRejectsInvalidInputs(t *testing.T) {
 		genValidDiscordWebhook(),
 	))
 
-	// Property: Empty Discord webhook should always fail validation
-	properties.Property("empty discord webhook fails validation", prop.ForAll(
+	// Property: Empty Discord webhook should pass validation (webhook is optional)
+	properties.Property("empty discord webhook passes validation", prop.ForAll(
 		func(name, sourceType string) bool {
 			req := CreateSourceRequest{
 				Name:           name,
@@ -56,7 +56,7 @@ func TestProperty_ValidationRejectsInvalidInputs(t *testing.T) {
 			}
 
 			err := req.Validate()
-			return err != nil // Should always have an error
+			return err == nil
 		},
 		genValidSourceName(),
 		genValidSourceType(),

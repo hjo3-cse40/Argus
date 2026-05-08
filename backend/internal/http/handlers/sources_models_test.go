@@ -40,22 +40,12 @@ func TestCreateSourceRequest_Validate_RequiredFields(t *testing.T) {
 			errContains: []string{"type is required"},
 		},
 		{
-			name: "missing discord webhook",
-			req: CreateSourceRequest{
-				Name: "GitHub Main",
-				Type: "github",
-			},
-			wantErr:     true,
-			errContains: []string{"discord_webhook is required"},
-		},
-		{
 			name: "multiple missing fields",
 			req:  CreateSourceRequest{},
 			wantErr: true,
 			errContains: []string{
 				"name is required",
 				"type is required",
-				"discord_webhook is required",
 			},
 		},
 	}
@@ -109,7 +99,7 @@ func TestCreateSourceRequest_Validate_DiscordWebhookFormat(t *testing.T) {
 		{
 			name:    "empty webhook",
 			webhook: "",
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 

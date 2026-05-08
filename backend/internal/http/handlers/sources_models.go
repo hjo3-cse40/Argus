@@ -56,10 +56,10 @@ func (r *CreateSourceRequest) Validate() error {
 		details = append(details, "type must be one of: github, gitlab, generic")
 	}
 
-	// Validate Discord webhook URL
-	if strings.TrimSpace(r.DiscordWebhook) == "" {
-		details = append(details, "discord_webhook is required")
-	} else if !strings.HasPrefix(r.DiscordWebhook, "https://discord.com/api/webhooks/") {
+	// Validate Discord webhook URL only when provided.
+	if strings.TrimSpace(r.DiscordWebhook) != "" &&
+		!strings.HasPrefix(r.DiscordWebhook, "https://discord.com/api/webhooks/") &&
+		!strings.HasPrefix(r.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
 		details = append(details, "discord_webhook must be a valid Discord webhook URL")
 	}
 

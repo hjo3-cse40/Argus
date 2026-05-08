@@ -50,10 +50,10 @@ func (r *CreatePlatformRequest) Validate() *ValidationError {
 		details = append(details, "name must be one of: youtube, reddit, x")
 	}
 
-	// Validate discord_webhook - must start with Discord webhook URL
-	if strings.TrimSpace(r.DiscordWebhook) == "" {
-		details = append(details, "discord_webhook is required")
-	} else if !strings.HasPrefix(r.DiscordWebhook, "https://discord.com/api/webhooks/") && !strings.HasPrefix(r.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
+	// Validate discord_webhook only when provided.
+	if strings.TrimSpace(r.DiscordWebhook) != "" &&
+		!strings.HasPrefix(r.DiscordWebhook, "https://discord.com/api/webhooks/") &&
+		!strings.HasPrefix(r.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
 		details = append(details, "discord_webhook must start with https://discord.com/api/webhooks/ or https://discordapp.com/api/webhooks/")
 	}
 
@@ -70,10 +70,10 @@ func (r *CreatePlatformRequest) Validate() *ValidationError {
 func (r *UpdatePlatformRequest) Validate() *ValidationError {
 	var details []string
 
-	// Validate discord_webhook - must start with Discord webhook URL
-	if strings.TrimSpace(r.DiscordWebhook) == "" {
-		details = append(details, "discord_webhook is required")
-	} else if !strings.HasPrefix(r.DiscordWebhook, "https://discord.com/api/webhooks/") && !strings.HasPrefix(r.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
+	// Validate discord_webhook only when provided.
+	if strings.TrimSpace(r.DiscordWebhook) != "" &&
+		!strings.HasPrefix(r.DiscordWebhook, "https://discord.com/api/webhooks/") &&
+		!strings.HasPrefix(r.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
 		details = append(details, "discord_webhook must start with https://discord.com/api/webhooks/ or https://discordapp.com/api/webhooks/")
 	}
 

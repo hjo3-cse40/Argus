@@ -31,10 +31,10 @@ func validatePlatform(p Platform) error {
 		details = append(details, "name must be one of: youtube, reddit, x")
 	}
 
-	// Validate discord_webhook - must start with Discord webhook URL
-	if strings.TrimSpace(p.DiscordWebhook) == "" {
-		details = append(details, "discord_webhook is required")
-	} else if !strings.HasPrefix(p.DiscordWebhook, "https://discord.com/api/webhooks/") && !strings.HasPrefix(p.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
+	// Validate discord_webhook only when provided.
+	if strings.TrimSpace(p.DiscordWebhook) != "" &&
+		!strings.HasPrefix(p.DiscordWebhook, "https://discord.com/api/webhooks/") &&
+		!strings.HasPrefix(p.DiscordWebhook, "https://discordapp.com/api/webhooks/") {
 		details = append(details, "discord_webhook must start with https://discord.com/api/webhooks/ or https://discordapp.com/api/webhooks/")
 	}
 
