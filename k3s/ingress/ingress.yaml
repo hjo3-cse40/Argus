@@ -5,7 +5,6 @@ metadata:
   namespace: argus
   annotations:
     kubernetes.io/ingress.class: "traefik"
-    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
     - host: argus.masondrake.dev
@@ -13,6 +12,15 @@ spec:
         paths:
           - path: /api
             pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+
+          # Same handler as in-cluster probes; public uptime checks should not hit Next.js (404).
+          - path: /health
+            pathType: Exact
             backend:
               service:
                 name: api
