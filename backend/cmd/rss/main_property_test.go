@@ -4,6 +4,7 @@ import (
 	"argus-backend/internal/events"
 	"argus-backend/internal/store"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/leanovate/gopter"
@@ -65,7 +66,7 @@ func TestProperty_EventMetadataPopulation(t *testing.T) {
 func TestProperty_RSSHubURLConstruction(t *testing.T) {
 	properties := gopter.NewProperties(nil)
 
-	properties.Property("RSSHub URL is constructed correctly for each platform",
+	properties.Property("RSSHub URL is constructed correctly for youtube and x",
 		prop.ForAll(
 			func(platformName, identifier string) bool {
 				baseURL := "https://rsshub.example.com"
@@ -74,9 +75,12 @@ func TestProperty_RSSHubURLConstruction(t *testing.T) {
 				var expectedPath string
 				switch platformName {
 				case "youtube":
-					expectedPath = fmt.Sprintf("%s/youtube/channel/%s", baseURL, identifier)
-				case "reddit":
-					expectedPath = fmt.Sprintf("%s/reddit/subreddit/%s", baseURL, identifier)
+					if youTubeChannelIDRe.MatchString(identifier) {
+						expectedPath = fmt.Sprintf("%s/youtube/channel/%s", baseURL, identifier)
+					} else {
+						h := strings.TrimPrefix(identifier, "@")
+						expectedPath = fmt.Sprintf("%s/youtube/user/@%s", baseURL, h)
+					}
 				case "x":
 					expectedPath = fmt.Sprintf("%s/twitter/user/%s", baseURL, identifier)
 				default:
@@ -85,8 +89,27 @@ func TestProperty_RSSHubURLConstruction(t *testing.T) {
 
 				return url == expectedPath
 			},
-			gen.OneConstOf("youtube", "reddit", "x"), // platformName
-			gen.Identifier(),                         // identifier
+			gen.OneConstOf("youtube", "x"), // platformName
+			gen.Identifier(),               // identifier
+		))
+
+	properties.TestingRun(t, gopter.ConsoleReporter(false))
+}
+
+func TestProperty_RedditFeedURLUsesPublicRSS(t *testing.T) {
+	properties := gopter.NewProperties(nil)
+
+	properties.Property("Reddit feed URL is reddit.com public RSS, not RSSHub",
+		prop.ForAll(
+			func(identifier string) bool {
+				baseURL := "https://rsshub.example.com"
+				u := feedURLForSubsource(baseURL, "reddit", identifier)
+				if strings.TrimSpace(identifier) == "" || normalizeRedditSubreddit(identifier) == "" {
+					return u == ""
+				}
+				return strings.HasPrefix(u, "https://www.reddit.com/r/") && strings.HasSuffix(u, "/.rss")
+			},
+			gen.Identifier(),
 		))
 
 	properties.TestingRun(t, gopter.ConsoleReporter(false))

@@ -137,3 +137,45 @@ func TestEvaluate_EmptyDescription(t *testing.T) {
 		t.Error("expected include to match title even without description")
 	}
 }
+
+func TestEvaluate_IncludeAll_BlocksUnlessAllMatch(t *testing.T) {
+	ev := makeEvent("NBA Finals", "highlights")
+	filters := []store.DestinationFilter{
+		{FilterType: "keyword_include", Pattern: "finals"},
+		{FilterType: "keyword_include", Pattern: "playoffs"},
+	}
+	opts := FilterCombineOpts{IncludeCombine: "all"}
+	if EvaluateWithOpts(ev, filters, opts) {
+		t.Error("expected block when not all includes match")
+	}
+}
+
+func TestEvaluate_IncludeAll_PassesWhenAllMatch(t *testing.T) {
+	ev := makeEvent("NBA Finals playoffs recap", "")
+	filters := []store.DestinationFilter{
+		{FilterType: "keyword_include", Pattern: "finals"},
+		{FilterType: "keyword_include", Pattern: "playoffs"},
+	}
+	opts := FilterCombineOpts{IncludeCombine: "all"}
+	if !EvaluateWithOpts(ev, filters, opts) {
+		t.Error("expected pass when all includes match")
+	}
+}
+
+func TestEvaluate_ExcludeAll_BlocksOnlyWhenAllMatch(t *testing.T) {
+	filters := []store.DestinationFilter{
+		{FilterType: "keyword_exclude", Pattern: "shorts"},
+		{FilterType: "keyword_exclude", Pattern: "ad"},
+	}
+	opts := FilterCombineOpts{ExcludeCombine: "all"}
+
+	evOne := makeEvent("NBA shorts highlights", "")
+	if !EvaluateWithOpts(evOne, filters, opts) {
+		t.Error("exclude ALL: one keyword should not block")
+	}
+
+	evBoth := makeEvent("shorts and ads roundup", "")
+	if EvaluateWithOpts(evBoth, filters, opts) {
+		t.Error("exclude ALL: both keywords should block")
+	}
+}

@@ -40,11 +40,13 @@ type Source struct {
 }
 
 type Platform struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	DiscordWebhook string    `json:"discord_webhook"`
-	WebhookSecret  string    `json:"webhook_secret,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID                   string    `json:"id"`
+	Name                 string    `json:"name"`
+	DiscordWebhook       string    `json:"discord_webhook"`
+	WebhookSecret        string    `json:"webhook_secret,omitempty"`
+	FilterIncludeCombine string    `json:"filter_include_combine,omitempty"` // "any" (default) or "all"
+	FilterExcludeCombine string    `json:"filter_exclude_combine,omitempty"` // "any" (default) or "all"
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 type Subsource struct {
@@ -250,6 +252,7 @@ func (s *MemoryStore) Close() error {
 
 // AddPlatform stores a new platform configuration with generated UUID
 func (s *MemoryStore) AddPlatform(platform Platform) error {
+	normalizePlatformCombines(&platform)
 	// Validate platform data
 	if err := validatePlatform(platform); err != nil {
 		return err
@@ -492,6 +495,7 @@ func (s *MemoryStore) GetPlatformByName(name string) (Platform, bool) {
 
 // UpdatePlatform modifies platform configuration while preserving created_at
 func (s *MemoryStore) UpdatePlatform(id string, platform Platform) error {
+	normalizePlatformCombines(&platform)
 	// Validate platform data
 	if err := validatePlatform(platform); err != nil {
 		return err

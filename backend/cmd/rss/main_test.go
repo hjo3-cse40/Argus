@@ -2,6 +2,7 @@ package main
 
 import (
 	"argus-backend/internal/store"
+	"strings"
 	"testing"
 )
 
@@ -73,29 +74,120 @@ func TestLoadSubsources_Empty(t *testing.T) {
 	}
 }
 
-func TestConstructRSSHubURL_YouTube(t *testing.T) {
+func TestConstructRSSHubURL_YouTube_ChannelID(t *testing.T) {
 	baseURL := "https://rsshub.example.com"
-	platformName := "youtube"
-	identifier := "UCxxx"
-
-	url := constructRSSHubURL(baseURL, platformName, identifier)
-	expected := "https://rsshub.example.com/youtube/channel/UCxxx"
-
+	// Valid UC… id is exactly UC + 22 chars from [-_0-9A-Za-z]
+	chID := "UC" + strings.Repeat("a", 22)
+	url := constructRSSHubURL(baseURL, "youtube", chID)
+	expected := "https://rsshub.example.com/youtube/channel/" + chID
 	if url != expected {
 		t.Errorf("expected '%s', got '%s'", expected, url)
 	}
 }
 
-func TestConstructRSSHubURL_Reddit(t *testing.T) {
+func TestConstructRSSHubURL_YouTube_UserHandle(t *testing.T) {
 	baseURL := "https://rsshub.example.com"
-	platformName := "reddit"
-	identifier := "programming"
+	for _, tc := range []struct {
+		id   string
+		want string
+	}{
+		{"NBA", "https://rsshub.example.com/youtube/user/@NBA"},
+		{"@NBA", "https://rsshub.example.com/youtube/user/@NBA"},
+		{"Pauletteeoficial", "https://rsshub.example.com/youtube/user/@Pauletteeoficial"},
+	} {
+		u := constructRSSHubURL(baseURL, "youtube", tc.id)
+		if u != tc.want {
+			t.Errorf("identifier %q: expected %q, got %q", tc.id, tc.want, u)
+		}
+	}
+}
 
-	url := constructRSSHubURL(baseURL, platformName, identifier)
-	expected := "https://rsshub.example.com/reddit/subreddit/programming"
+func TestFeedURLForSubsource_YouTube(t *testing.T) {
+	base := "http://rsshub:1200"
+	ch := "UC" + strings.Repeat("a", 22)
+	wantUC := "https://www.youtube.com/feeds/videos.xml?channel_id=" + ch
+	if got := feedURLForSubsource(base, "youtube", ch); got != wantUC {
+		t.Errorf("UC id: want %q, got %q", wantUC, got)
+	}
+	if got := feedURLForSubsource(base, "youtube", "NBA"); got != base+"/youtube/user/@NBA" {
+		t.Errorf("handle NBA: got %q", got)
+	}
+	if got := feedURLForSubsource(base, "youtube", "@wikipedia"); got != base+"/youtube/user/@wikipedia" {
+		t.Errorf("handle @wikipedia: got %q", got)
+	}
+}
 
-	if url != expected {
-		t.Errorf("expected '%s', got '%s'", expected, url)
+func TestFeedURLForSubsource_Reddit(t *testing.T) {
+	baseURL := "https://rsshub.example.com"
+	for _, tc := range []struct {
+		identifier string
+		want       string
+	}{
+		{"programming", "https://www.reddit.com/r/programming/.rss"},
+		{"r/news", "https://www.reddit.com/r/news/.rss"},
+		{"R/UltimateFrisbee", "https://www.reddit.com/r/UltimateFrisbee/.rss"},
+	} {
+		got := feedURLForSubsource(baseURL, "reddit", tc.identifier)
+		if got != tc.want {
+			t.Errorf("identifier %q: want %q, got %q", tc.identifier, tc.want, got)
+		}
+	}
+}
+
+func TestNormalizeRedditSubreddit_Empty(t *testing.T) {
+	if u := feedURLForSubsource("http://x", "reddit", "  r/  "); u != "" {
+		t.Errorf("expected empty URL for empty sub after normalize, got %q", u)
+	}
+}
+
+func TestDecodeFeedXML_AtomRedditShape(t *testing.T) {
+	const atom = `<?xml version="1.0"?>` +
+		`<feed xmlns="http://www.w3.org/2005/Atom">` +
+		`<title>Ultimate</title>` +
+		`<entry>` +
+		`<title>Study Sunday</title>` +
+		`<link href="https://www.reddit.com/r/ultimate/comments/x/post/" />` +
+		`<published>2026-05-03T19:00:15+00:00</published>` +
+		`<author><name>/u/AutoModerator</name></author>` +
+		`</entry>` +
+		`</feed>`
+
+	title, items, err := decodeFeedXML([]byte(atom))
+	if err != nil {
+		t.Fatalf("decodeFeedXML: %v", err)
+	}
+	if title != "Ultimate" {
+		t.Errorf("title: got %q", title)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items: got %d", len(items))
+	}
+	if items[0].Title != "Study Sunday" {
+		t.Errorf("item title: got %q", items[0].Title)
+	}
+	if items[0].Link != "https://www.reddit.com/r/ultimate/comments/x/post/" {
+		t.Errorf("link: got %q", items[0].Link)
+	}
+	if items[0].PubDate == "" {
+		t.Error("expected pub date")
+	}
+	if items[0].Author != "/u/AutoModerator" {
+		t.Errorf("author: got %q", items[0].Author)
+	}
+}
+
+func TestDecodeFeedXML_RSS2StillWorks(t *testing.T) {
+	const rss = `<?xml version="1.0"?>` +
+		`<rss version="2.0"><channel>` +
+		`<title>Chan</title>` +
+		`<item><title>Hello</title><link>https://example.com/a</link></item>` +
+		`</channel></rss>`
+	title, items, err := decodeFeedXML([]byte(rss))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if title != "Chan" || len(items) != 1 || items[0].Title != "Hello" {
+		t.Fatalf("got title=%q items=%v", title, items)
 	}
 }
 

@@ -201,11 +201,22 @@ func (h *PlatformsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	includeCombine := existingPlatform.FilterIncludeCombine
+	excludeCombine := existingPlatform.FilterExcludeCombine
+	if req.FilterIncludeCombine != nil {
+		includeCombine = *req.FilterIncludeCombine
+	}
+	if req.FilterExcludeCombine != nil {
+		excludeCombine = *req.FilterExcludeCombine
+	}
+
 	// Create platform update (preserve name and created_at)
 	platform := store.Platform{
-		Name:           existingPlatform.Name,
-		DiscordWebhook: req.DiscordWebhook,
-		WebhookSecret:  req.WebhookSecret,
+		Name:                   existingPlatform.Name,
+		DiscordWebhook:         req.DiscordWebhook,
+		WebhookSecret:          req.WebhookSecret,
+		FilterIncludeCombine:   includeCombine,
+		FilterExcludeCombine:   excludeCombine,
 	}
 
 	// Update in store

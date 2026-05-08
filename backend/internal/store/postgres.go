@@ -411,6 +411,8 @@ func (s *PostgresStore) GetSourceByName(name string) (Source, bool) {
 
 // AddPlatform inserts a new platform configuration with generated UUID if ID is empty
 func (s *PostgresStore) AddPlatform(platform Platform) error {
+	normalizePlatformCombines(&platform)
+
 	// Generate UUID if not provided
 	if platform.ID == "" {
 		platform.ID = uuid.New().String()
@@ -428,9 +430,10 @@ func (s *PostgresStore) AddPlatform(platform Platform) error {
 	}
 
 	_, err := s.db.Exec(`
-		INSERT INTO platforms (id, name, discord_webhook, webhook_secret, created_at)
-		VALUES ($1, $2, $3, $4, $5)
-	`, platform.ID, platform.Name, platform.DiscordWebhook, webhookSecret, platform.CreatedAt)
+		INSERT INTO platforms (id, name, discord_webhook, webhook_secret, created_at, filter_include_combine, filter_exclude_combine)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, platform.ID, platform.Name, platform.DiscordWebhook, webhookSecret, platform.CreatedAt,
+		platform.FilterIncludeCombine, platform.FilterExcludeCombine)
 
 	if err != nil {
 		return fmt.Errorf("failed to insert platform: %w", err)
@@ -442,7 +445,7 @@ func (s *PostgresStore) AddPlatform(platform Platform) error {
 // ListPlatforms returns all platform configurations ordered by name ascending
 func (s *PostgresStore) ListPlatforms() []Platform {
 	rows, err := s.db.Query(`
-		SELECT id, name, discord_webhook, webhook_secret, created_at
+		SELECT id, name, discord_webhook, webhook_secret, created_at, filter_include_combine, filter_exclude_combine
 		FROM platforms
 		ORDER BY name ASC
 	`)
@@ -458,7 +461,8 @@ func (s *PostgresStore) ListPlatforms() []Platform {
 		var p Platform
 		var webhookSecret sql.NullString
 
-		err := rows.Scan(&p.ID, &p.Name, &p.DiscordWebhook, &webhookSecret, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.Name, &p.DiscordWebhook, &webhookSecret, &p.CreatedAt,
+			&p.FilterIncludeCombine, &p.FilterExcludeCombine)
 		if err != nil {
 			log.Printf("Failed to scan platform: %v", err)
 			continue
@@ -466,6 +470,7 @@ func (s *PostgresStore) ListPlatforms() []Platform {
 
 		// Convert NULL field to empty string
 		p.WebhookSecret = webhookSecret.String
+		normalizePlatformCombines(&p)
 		platforms = append(platforms, p)
 	}
 
@@ -483,10 +488,11 @@ func (s *PostgresStore) GetPlatform(id string) (Platform, bool) {
 	var webhookSecret sql.NullString
 
 	err := s.db.QueryRow(`
-		SELECT id, name, discord_webhook, webhook_secret, created_at
+		SELECT id, name, discord_webhook, webhook_secret, created_at, filter_include_combine, filter_exclude_combine
 		FROM platforms
 		WHERE id = $1
-	`, id).Scan(&p.ID, &p.Name, &p.DiscordWebhook, &webhookSecret, &p.CreatedAt)
+	`, id).Scan(&p.ID, &p.Name, &p.DiscordWebhook, &webhookSecret, &p.CreatedAt,
+		&p.FilterIncludeCombine, &p.FilterExcludeCombine)
 
 	if err == sql.ErrNoRows {
 		return Platform{}, false
@@ -499,6 +505,7 @@ func (s *PostgresStore) GetPlatform(id string) (Platform, bool) {
 
 	// Convert NULL field to empty string
 	p.WebhookSecret = webhookSecret.String
+	normalizePlatformCombines(&p)
 
 	return p, true
 }
@@ -509,10 +516,11 @@ func (s *PostgresStore) GetPlatformByName(name string) (Platform, bool) {
 	var webhookSecret sql.NullString
 
 	err := s.db.QueryRow(`
-		SELECT id, name, discord_webhook, webhook_secret, created_at
+		SELECT id, name, discord_webhook, webhook_secret, created_at, filter_include_combine, filter_exclude_combine
 		FROM platforms
 		WHERE name = $1
-	`, name).Scan(&p.ID, &p.Name, &p.DiscordWebhook, &webhookSecret, &p.CreatedAt)
+	`, name).Scan(&p.ID, &p.Name, &p.DiscordWebhook, &webhookSecret, &p.CreatedAt,
+		&p.FilterIncludeCombine, &p.FilterExcludeCombine)
 
 	if err == sql.ErrNoRows {
 		return Platform{}, false
@@ -525,12 +533,15 @@ func (s *PostgresStore) GetPlatformByName(name string) (Platform, bool) {
 
 	// Convert NULL field to empty string
 	p.WebhookSecret = webhookSecret.String
+	normalizePlatformCombines(&p)
 
 	return p, true
 }
 
 // UpdatePlatform modifies platform configuration while preserving created_at
 func (s *PostgresStore) UpdatePlatform(id string, platform Platform) error {
+	normalizePlatformCombines(&platform)
+
 	// Use sql.NullString for optional webhook_secret field
 	var webhookSecret sql.NullString
 	if platform.WebhookSecret != "" {
@@ -539,9 +550,9 @@ func (s *PostgresStore) UpdatePlatform(id string, platform Platform) error {
 
 	result, err := s.db.Exec(`
 		UPDATE platforms
-		SET discord_webhook = $1, webhook_secret = $2
-		WHERE id = $3
-	`, platform.DiscordWebhook, webhookSecret, id)
+		SET discord_webhook = $1, webhook_secret = $2, filter_include_combine = $3, filter_exclude_combine = $4
+		WHERE id = $5
+	`, platform.DiscordWebhook, webhookSecret, platform.FilterIncludeCombine, platform.FilterExcludeCombine, id)
 
 	if err != nil {
 		return fmt.Errorf("failed to update platform: %w", err)

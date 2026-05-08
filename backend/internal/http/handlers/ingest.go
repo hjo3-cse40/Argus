@@ -98,7 +98,12 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 	if subsourceID != nil {
 		if subsource, found := h.Store.GetSubsource(*subsourceID); found {
 			filters := h.Store.ListFilters(subsource.PlatformID)
-			if pass, reason := filter.EvaluateWithReason(&ev, filters); !pass {
+			opts := filter.FilterCombineOpts{}
+			if plat, ok := h.Store.GetPlatform(subsource.PlatformID); ok {
+				opts.IncludeCombine = plat.FilterIncludeCombine
+				opts.ExcludeCombine = plat.FilterExcludeCombine
+			}
+			if pass, reason := filter.EvaluateWithReason(&ev, filters, opts); !pass {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(map[string]any{

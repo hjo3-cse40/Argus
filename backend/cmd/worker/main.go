@@ -152,7 +152,12 @@ func main() {
 		// Apply per-destination filters
 		if platformID != "" {
 			filters := st.ListFilters(platformID)
-			if !filter.Evaluate(ev, filters) {
+			opts := filter.FilterCombineOpts{}
+			if p, ok := st.GetPlatform(platformID); ok {
+				opts.IncludeCombine = p.FilterIncludeCombine
+				opts.ExcludeCombine = p.FilterExcludeCombine
+			}
+			if !filter.EvaluateWithOpts(ev, filters, opts) {
 				log.Printf("FILTERED event_id=%s platform_id=%s (did not pass destination filters)",
 					ev.EventID, platformID)
 				_ = msg.Ack(false)

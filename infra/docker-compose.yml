@@ -20,11 +20,13 @@ services:
     environment:
       NODE_ENV: production
       CACHE_TYPE: memory
+    # Upstream RSSHub exposes /healthz; wget is often missing from the image (probe always fails).
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:1200"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:1200/healthz"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
 
   db:
     image: postgres:16
@@ -96,5 +98,31 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  rss:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    command: ["./rss"]
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: argus
+      DB_PASSWORD: argus
+      DB_NAME: argus
+      RABBITMQ_URL: amqp://argus:argus@rabbitmq:5672/
+      RSSHUB_BASE_URL: http://rsshub:1200
+      RSS_SEEN_IDS_FILE: /data/seen_ids.txt
+    volumes:
+      - rss_seen_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      rsshub:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
-    pgdata:
+  pgdata:
+  rss_seen_data:

@@ -1,9 +1,32 @@
+export type FilterCombineMode = "any" | "all";
+
 export type Platform = {
   id: string;
   name: string;
   discord_webhook: string;
+  filter_include_combine: FilterCombineMode;
+  filter_exclude_combine: FilterCombineMode;
   created_at: string;
 };
+
+export type UpdatePlatformPayload = {
+  discord_webhook: string;
+  webhook_secret?: string;
+  filter_include_combine?: FilterCombineMode;
+  filter_exclude_combine?: FilterCombineMode;
+};
+
+export async function updatePlatform(
+  platformId: string,
+  body: UpdatePlatformPayload
+): Promise<Platform> {
+  const res = await doFetch(apiUrl(`/api/platforms/${encodeURIComponent(platformId)}`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return readJson<Platform>(res, "Update platform failed");
+}
 
 export type DestinationFilter = {
   id: string;
@@ -114,6 +137,8 @@ export type CreatePlatformPayload = {
   name: string;
   discord_webhook: string;
   webhook_secret?: string;
+  filter_include_combine?: FilterCombineMode;
+  filter_exclude_combine?: FilterCombineMode;
 };
 
 export async function createPlatform(body: CreatePlatformPayload): Promise<Platform> {

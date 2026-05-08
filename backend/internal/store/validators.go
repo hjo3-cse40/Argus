@@ -38,11 +38,39 @@ func validatePlatform(p Platform) error {
 		details = append(details, "discord_webhook must start with https://discord.com/api/webhooks/ or https://discordapp.com/api/webhooks/")
 	}
 
+	inc := NormalizeFilterCombineString(p.FilterIncludeCombine)
+	exc := NormalizeFilterCombineString(p.FilterExcludeCombine)
+	if inc != "any" && inc != "all" {
+		details = append(details, "filter_include_combine must be any or all")
+	}
+	if exc != "any" && exc != "all" {
+		details = append(details, "filter_exclude_combine must be any or all")
+	}
+
 	if len(details) > 0 {
 		return &ValidationError{Details: details}
 	}
 
 	return nil
+}
+
+// normalizePlatformCombines sets empty combine modes to "any" and trims whitespace.
+func normalizePlatformCombines(p *Platform) {
+	p.FilterIncludeCombine = NormalizeFilterCombineString(p.FilterIncludeCombine)
+	p.FilterExcludeCombine = NormalizeFilterCombineString(p.FilterExcludeCombine)
+}
+
+// NormalizeFilterCombineString normalizes API/storage values: trim, lowercase; empty → "any".
+func NormalizeFilterCombineString(s string) string {
+	return normalizeFilterCombineString(s)
+}
+
+func normalizeFilterCombineString(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return "any"
+	}
+	return s
 }
 
 // validateSubsource checks if a subsource has valid data

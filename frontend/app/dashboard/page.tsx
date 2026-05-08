@@ -9,8 +9,10 @@ import {
   fetchDeliveries,
   fetchFilters,
   fetchPlatforms,
+  updatePlatform,
   type Delivery,
   type DestinationFilter,
+  type FilterCombineMode,
   type Platform,
 } from "@/lib/api";
 import "../app-shell.css";
@@ -205,6 +207,28 @@ export default function Dashboard() {
   const includes = destinationFilters.filter((f) => f.filter_type === "keyword_include");
   const excludes = destinationFilters.filter((f) => f.filter_type === "keyword_exclude");
 
+  const selectedPlatform = platforms.find((p) => p.id === selectedPlatformId);
+
+  const savePlatformCombine = async (patch: {
+    filter_include_combine?: FilterCombineMode;
+    filter_exclude_combine?: FilterCombineMode;
+  }) => {
+    if (!selectedPlatform) return;
+    setActionError(null);
+    try {
+      const updated = await updatePlatform(selectedPlatform.id, {
+        discord_webhook: selectedPlatform.discord_webhook,
+        filter_include_combine:
+          patch.filter_include_combine ?? selectedPlatform.filter_include_combine ?? "any",
+        filter_exclude_combine:
+          patch.filter_exclude_combine ?? selectedPlatform.filter_exclude_combine ?? "any",
+      });
+      setPlatforms((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not update filter combine mode");
+    }
+  };
+
   const addInclude = async () => {
     const pattern = includeInput.trim();
     if (!pattern || !selectedPlatformId) return;
@@ -331,8 +355,8 @@ export default function Dashboard() {
           <div id="keyword-filters" className="app-filters-panel">
             <h2>Filters</h2>
             <p className="app-filters-help">
-              Per platform. Include: need <strong>at least one</strong> match. Exclude: drop if
-              any match (checked first).
+              Per platform. Choose whether multiple keywords use <strong>any</strong> (OR) or{" "}
+              <strong>all</strong> (AND). Excludes are checked first.
             </p>
 
             {platformsError && <p className="app-error">{platformsError}</p>}
@@ -361,6 +385,47 @@ export default function Dashboard() {
                     </option>
                   ))}
                 </select>
+
+                {selectedPlatform ? (
+                  <div className="app-filter-block" style={{ marginTop: "0.75rem" }}>
+                    <label className="app-label" htmlFor="filter-include-combine">
+                      Include keywords match
+                    </label>
+                    <select
+                      id="filter-include-combine"
+                      value={selectedPlatform.filter_include_combine ?? "any"}
+                      onChange={(e) =>
+                        void savePlatformCombine({
+                          filter_include_combine: e.target.value as FilterCombineMode,
+                        })
+                      }
+                      className="app-select"
+                    >
+                      <option value="any">Any keyword (OR)</option>
+                      <option value="all">All keywords (AND)</option>
+                    </select>
+                    <label
+                      className="app-label"
+                      htmlFor="filter-exclude-combine"
+                      style={{ marginTop: "0.65rem" }}
+                    >
+                      Exclude keywords match
+                    </label>
+                    <select
+                      id="filter-exclude-combine"
+                      value={selectedPlatform.filter_exclude_combine ?? "any"}
+                      onChange={(e) =>
+                        void savePlatformCombine({
+                          filter_exclude_combine: e.target.value as FilterCombineMode,
+                        })
+                      }
+                      className="app-select"
+                    >
+                      <option value="any">Any keyword blocks (OR)</option>
+                      <option value="all">All keywords must match to block (AND)</option>
+                    </select>
+                  </div>
+                ) : null}
 
                 {filtersLoading ? (
                   <p className="app-muted" style={{ marginTop: "1rem" }}>

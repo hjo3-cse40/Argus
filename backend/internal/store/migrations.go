@@ -114,6 +114,10 @@ var migrations = []string{
 	)`,
 
 	`CREATE INDEX IF NOT EXISTS idx_dest_filters_platform ON destination_filters(platform_id)`,
+
+	// Per-platform AND/OR for multiple keyword filters (default any = legacy OR behavior)
+	`ALTER TABLE platforms ADD COLUMN IF NOT EXISTS filter_include_combine TEXT NOT NULL DEFAULT 'any'`,
+	`ALTER TABLE platforms ADD COLUMN IF NOT EXISTS filter_exclude_combine TEXT NOT NULL DEFAULT 'any'`,
 }
 
 // MigrateFlatToHierarchical migrates data from the flat sources table to hierarchical platforms and subsources tables
