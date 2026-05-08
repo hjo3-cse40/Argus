@@ -1305,7 +1305,7 @@ func TestProperty_DiscordWebhookURLValidation(t *testing.T) {
 				// Check if it's a validation error about the webhook
 				if validationErr, ok := err.(*ValidationError); ok {
 					for _, detail := range validationErr.Details {
-						if detail == "discord_webhook must start with https://discord.com/api/webhooks/" {
+						if detail == "discord_webhook must start with https://discord.com/api/webhooks/ or https://discordapp.com/api/webhooks/" {
 							return false // This should not happen for valid webhooks
 						}
 					}
@@ -1547,8 +1547,6 @@ func genInvalidDiscordWebhook() gopter.Gen {
 		"http://discord.com/api/webhooks/123",
 		"discord.com/api/webhooks/123",
 		"https://discord.com/webhooks/123",
-		"",
-		"   ",
 		"not-a-url",
 	)
 }

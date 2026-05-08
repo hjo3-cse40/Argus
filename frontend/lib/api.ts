@@ -112,7 +112,7 @@ export type UpdateSubsourcePayload = {
 
 export type CreatePlatformPayload = {
   name: string;
-  discord_webhook: string;
+  discord_webhook?: string;
   webhook_secret?: string;
 };
 
@@ -132,6 +132,15 @@ export async function fetchPlatforms(): Promise<Platform[]> {
     throw new Error("Load platforms failed: server did not return a JSON array");
   }
   return data as Platform[];
+}
+
+export async function deletePlatform(platformId: string): Promise<void> {
+  const res = await doFetch(apiUrl(`/api/platforms/${encodeURIComponent(platformId)}`), {
+    method: "DELETE",
+  });
+  if (res.status === 204) return;
+  if (res.ok) return;
+  throw new Error(await errorMessageFromResponse(res, "Delete platform failed"));
 }
 
 export type FetchDeliveriesOptions = {

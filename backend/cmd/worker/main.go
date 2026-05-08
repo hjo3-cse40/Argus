@@ -135,7 +135,9 @@ func main() {
 
 		log.Printf("RECEIVED event_id=%s", ev.EventID)
 
-		// Resolve per-platform webhook; fall back to global config
+		// Resolve per-platform webhook; fall back to global config.
+		// Discord delivery is optional: if no webhook is configured, continue processing
+		// and still mark the event as delivered for in-app notifications.
 		webhookURL, platformID, resolveErr := noti.ResolveDestination(ev)
 		if resolveErr != nil || webhookURL == "" {
 			if fallbackWebhook != "" {
@@ -143,9 +145,13 @@ func main() {
 				webhookURL = fallbackWebhook
 				platformID = ""
 			} else {
-				log.Printf("destination resolve failed and no fallback: %v", resolveErr)
-				_ = msg.Ack(false)
-				continue
+				webhookURL = ""
+				platformID = ""
+				if resolveErr != nil {
+					log.Printf("destination resolve failed and no fallback; skipping Discord delivery event_id=%s err=%v", ev.EventID, resolveErr)
+				} else {
+					log.Printf("no Discord webhook configured; skipping Discord delivery event_id=%s", ev.EventID)
+				}
 			}
 		}
 
@@ -160,28 +166,30 @@ func main() {
 			}
 		}
 
-		// Retry Discord delivery
+		// Retry Discord delivery when destination is configured.
 		var lastErr error
-		success := false
+		success := webhookURL == ""
 		attemptsMade := 0
 
-		for attempt := 1; attempt <= maxRetries; attempt++ {
-			attemptsMade = attempt
+		if webhookURL != "" {
+			for attempt := 1; attempt <= maxRetries; attempt++ {
+				attemptsMade = attempt
 
-			err := notifier.SendDiscordWebhook(webhookURL, ev)
-			if err == nil {
-				success = true
-				log.Printf("discord delivered event_id=%s attempt=%d/%d",
-					ev.EventID, attempt, maxRetries)
-				break
-			}
+				err := notifier.SendDiscordWebhook(webhookURL, ev)
+				if err == nil {
+					success = true
+					log.Printf("discord delivered event_id=%s attempt=%d/%d",
+						ev.EventID, attempt, maxRetries)
+					break
+				}
 
-			lastErr = err
-			log.Printf("discord send failed event_id=%s attempt=%d/%d err=%v",
-				ev.EventID, attempt, maxRetries, err)
+				lastErr = err
+				log.Printf("discord send failed event_id=%s attempt=%d/%d err=%v",
+					ev.EventID, attempt, maxRetries, err)
 
-			if attempt < maxRetries {
-				time.Sleep(baseDelay * time.Duration(1<<(attempt-1)))
+				if attempt < maxRetries {
+					time.Sleep(baseDelay * time.Duration(1<<(attempt-1)))
+				}
 			}
 		}
 

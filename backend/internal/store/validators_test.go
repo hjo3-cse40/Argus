@@ -51,6 +51,8 @@ func TestValidatePlatform_ValidWebhookURLs(t *testing.T) {
 		"https://discord.com/api/webhooks/123456789/abcdef",
 		"https://discord.com/api/webhooks/987654321/xyz123",
 		"https://discord.com/api/webhooks/111/aaa",
+		"",
+		"   ",
 	}
 	
 	for _, webhook := range validWebhooks {
@@ -74,8 +76,6 @@ func TestValidatePlatform_InvalidWebhookURLs(t *testing.T) {
 		"http://discord.com/api/webhooks/123",
 		"discord.com/api/webhooks/123",
 		"https://discord.com/webhooks/123",
-		"",
-		"   ",
 		"not-a-url",
 	}
 	

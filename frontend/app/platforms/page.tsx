@@ -7,6 +7,7 @@ import { deriveSubsourceIdentifierFromUrl } from "@/lib/deriveSubsourceFromUrl";
 import {
   createPlatform,
   createSubsource,
+  deletePlatform,
   deleteSubsource,
   fetchPlatforms,
   fetchSubsources,
@@ -48,6 +49,7 @@ export default function PlatformsPage() {
   const [editName, setEditName] = useState("");
   const [editUrl, setEditUrl] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+  const [deletingPlatformId, setDeletingPlatformId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setListError(null);
@@ -229,6 +231,27 @@ export default function PlatformsPage() {
     }
   };
 
+  const removePlatform = async (platform: Platform) => {
+    setFormError(null);
+    const confirmed = window.confirm(
+      `Delete platform "${platform.name}"? This also deletes its sub-channels.`
+    );
+    if (!confirmed) return;
+
+    setDeletingPlatformId(platform.id);
+    try {
+      await deletePlatform(platform.id);
+      if (editingId) cancelEdit();
+      setSubName("");
+      setSubUrl("");
+      await load();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not delete platform");
+    } finally {
+      setDeletingPlatformId(null);
+    }
+  };
+
   return (
     <div className="app-shell">
       <AppTopNav />
@@ -236,8 +259,8 @@ export default function PlatformsPage() {
         <aside className="app-sidebar">
           <AppNav />
           <p className="app-sidebar-hint">
-            Add Discord webhooks and sub-channels per platform, then set filters on the
-            Dashboard.
+            Add sub-channels per platform, and optionally a Discord webhook to mirror
+            notifications there too.
           </p>
         </aside>
 
@@ -273,12 +296,11 @@ export default function PlatformsPage() {
               </div>
               <div>
                 <label className="app-label" htmlFor="webhook-url">
-                  Discord webhook URL
+                  Discord webhook URL (optional)
                 </label>
                 <input
                   id="webhook-url"
                   type="url"
-                  required
                   value={webhook}
                   onChange={(e) => setWebhook(e.target.value)}
                   placeholder="https://discord.com/api/webhooks/..."
@@ -316,14 +338,31 @@ export default function PlatformsPage() {
               <ul className="app-card-list">
                 {platforms.map((p) => (
                   <li key={p.id} className="app-card">
-                    <p style={{ fontFamily: "'DM Serif Display', serif", margin: "0 0 0.35rem" }}>
-                      <span style={{ textTransform: "capitalize" }}>{p.name}</span>
-                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: "0.75rem",
+                      }}
+                    >
+                      <p style={{ fontFamily: "'DM Serif Display', serif", margin: "0 0 0.35rem" }}>
+                        <span style={{ textTransform: "capitalize" }}>{p.name}</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void removePlatform(p)}
+                        disabled={deletingPlatformId === p.id}
+                        className="app-link-danger"
+                      >
+                        {deletingPlatformId === p.id ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
                     <p className="app-muted" style={{ margin: 0, fontSize: "0.75rem", wordBreak: "break-all" }}>
                       id: {p.id}
                     </p>
                     <p className="app-muted" style={{ margin: "0.35rem 0 0", fontSize: "0.75rem", wordBreak: "break-all" }}>
-                      webhook: {p.discord_webhook}
+                      webhook: {p.discord_webhook || "not configured"}
                     </p>
                   </li>
                 ))}

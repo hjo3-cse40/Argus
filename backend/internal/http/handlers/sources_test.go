@@ -55,16 +55,10 @@ func TestSourcesHandler_Create_MissingRequiredFields(t *testing.T) {
 			wantDetails: []string{"type is required"},
 		},
 		{
-			name:        "missing discord webhook",
-			payload:     CreateSourceRequest{Name: "Test", Type: "github"},
-			wantErr:     "Validation failed",
-			wantDetails: []string{"discord_webhook is required"},
-		},
-		{
 			name:        "all fields missing",
 			payload:     CreateSourceRequest{},
 			wantErr:     "Validation failed",
-			wantDetails: []string{"name is required", "type is required", "discord_webhook is required"},
+			wantDetails: []string{"name is required", "type is required"},
 		},
 	}
 
