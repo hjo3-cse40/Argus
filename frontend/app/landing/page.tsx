@@ -214,7 +214,7 @@ export default function Landing() {
       </main>
 
       <footer>
-        <span>© 2024 Argus</span>
+        <span>© 2026 Argus</span>
         <Link href="/login">Log in</Link>
       </footer>
     </div>

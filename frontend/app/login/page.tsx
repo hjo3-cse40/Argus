@@ -70,7 +70,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="panel-footer">© 2024 Argus</div>
+        <div className="panel-footer">© 2026 Argus</div>
       </div>
 
       {/* RIGHT PANEL */}

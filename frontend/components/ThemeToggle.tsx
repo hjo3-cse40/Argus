@@ -4,17 +4,11 @@ import { useEffect, useState } from "react";
 import { SunMedium, MoonStar } from "lucide-react";
 
 export default function ThemeToggle() {
-    const [dark, setDark] = useState(false);
+    const [dark, setDark] = useState(() => {
+        if (typeof window === "undefined") return false;
 
-    useEffect(() => {
-        const saved = localStorage.getItem("theme");
-        const isDark = saved === "dark";
-        setDark(isDark);
-
-        if (isDark) {
-            document.documentElement.classList.add("dark");
-        }
-    }, []);
+        return localStorage.getItem("theme") === "dark";
+    });
 
     function toggleTheme() {
         const next = !dark;
