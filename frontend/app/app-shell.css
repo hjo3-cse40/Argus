@@ -9,7 +9,7 @@ body:has(.app-shell) {
   --line: rgba(10, 10, 15, 0.12);
   --error: #c0392b;
 
-  background: var(--paper) !important;
+  background: var(--paper);
   display: block !important;
   min-height: 100vh !important;
   margin: 0;
@@ -22,8 +22,64 @@ body:has(.app-shell)::before {
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events: none;
-  z-index: 1000;
+  z-index: 0;
   opacity: 0.5;
+}
+
+html.dark body:has(.app-shell) {
+  --ink: #f5f0e8;
+  --paper: #0f0f14;
+  --amber: #f0a020;
+  --muted: #d4cec4;
+  --line: rgba(245, 240, 232, 0.16);
+}
+
+html.dark .app-topnav {
+  background: rgba(15, 15, 20, 0.88);
+}
+
+html.dark .app-sidebar {
+  background: rgba(15, 15, 20, 0.72);
+}
+
+html.dark .app-nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html.dark .app-nav-link-active {
+  color: var(--ink);
+  background: rgba(240, 160, 32, 0.16);
+  border-color: rgba(240, 160, 32, 0.45);
+}
+
+html.dark .app-stat,
+html.dark .app-card,
+html.dark .app-post-card,
+html.dark .app-notification-card,
+html.dark .app-icon-btn,
+html.dark .app-toast {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html.dark .app-code,
+html.dark .app-chip {
+  background: rgba(240, 160, 32, 0.12);
+}
+
+html.dark .app-btn {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+html.dark .app-btn:disabled {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+html.dark .app-stat-val {
+  color: var(--ink);
 }
 
 .app-shell {
@@ -188,6 +244,7 @@ body:has(.app-shell)::before {
   letter-spacing: -0.03em;
   line-height: 1.1;
   margin: 0 0 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .app-page-title em {
@@ -198,7 +255,7 @@ body:has(.app-shell)::before {
 .app-page-sub {
   font-size: 0.85rem;
   color: var(--muted);
-  margin: 0 0 2rem;
+  margin: 0 0 0.75rem;
   max-width: 52ch;
 }
 
@@ -763,6 +820,50 @@ body:has(.app-shell)::before {
   color: var(--ink);
 }
 
+.theme-toggle {
+  width: 72px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 1px rgba(10, 10, 15, 0.04);
+  background: var(--paper);
+  border-color: var(--amber);
+  position: relative;
+  cursor: pointer;
+  padding: 3px;
+  margin-top: 0.25rem;
+}
+
+.theme-toggle.active {
+  background: var(--amber);
+}
+
+.toggle-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.25s ease;
+}
+
+.theme-toggle.active .toggle-thumb {
+  transform: translateX(36px);
+}
+
+.toggle-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
 @keyframes app-toast-in {
   from {
     opacity: 0;
@@ -824,3 +925,4 @@ body:has(.app-shell)::before {
     grid-template-columns: 1fr;
   }
 }
+

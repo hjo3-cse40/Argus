@@ -54,7 +54,12 @@ export function AppNav() {
           </Link>
         );
       })}
-      <div className="app-nav-muted">Settings</div>
+      <Link
+        href="/settings"
+        className={pathname === "/settings" ? "app-nav-link app-nav-link-active" : "app-nav-link"}
+      >
+        Settings
+      </Link>
     </nav>
   );
 }

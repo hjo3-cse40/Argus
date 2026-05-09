@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, DM_Mono, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { GlobalDeliveryToasts } from "@/components/GlobalDeliveryToasts";
 import { ToastProvider } from "@/components/ToastProvider";
+import { cookies } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,15 +32,19 @@ export const metadata: Metadata = {
   description: "Always watching. Never missing",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("theme")?.value;
+  const isDark = theme === "dark";
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${dmMono.variable} ${dmSerif.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${isDark ? "dark " : ""}${geistSans.variable} ${geistMono.variable} ${dmMono.variable} ${dmSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ToastProvider>
