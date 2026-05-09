@@ -89,7 +89,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Auth.LoginUser(w, req.Email, req.Password); err != nil {
+	user, err := h.Auth.LoginUser(w, req.Email, req.Password)
+	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -108,10 +109,21 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := h.Auth.GenerateToken(user.ID, user.Email)
+	if err != nil {
+		log.Printf("Failed to generate token: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(ErrorResponse{
+			Error: "Internal server error",
+		})
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
-		"message": "Logged in successfully",
+		"token": token,
 	})
 }
 

@@ -16,12 +16,13 @@ const (
 
 // Service handles all auth operations
 type Service struct {
-	store store.Store
+	store     store.Store
+	jwtSecret string
 }
 
 // NewService creates a new auth service
-func NewService(store store.Store) *Service {
-	return &Service{store: store}
+func NewService(store store.Store, jwtSecret string) *Service {
+	return &Service{store: store, jwtSecret: jwtSecret}
 }
 
 // RegisterUser creates a new user with a hashed password
@@ -50,14 +51,15 @@ func (s *Service) RegisterUser(email, password string) error {
 }
 
 // LoginUser validates credentials and creates a session, writing the cookie to the response
-func (s *Service) LoginUser(w http.ResponseWriter, email, password string) error {
+// Returns the authenticated user on success.
+func (s *Service) LoginUser(w http.ResponseWriter, email, password string) (store.User, error) {
 	user, found := s.store.GetUserByEmail(email)
 	if !found {
-		return ErrInvalidCredentials
+		return store.User{}, ErrInvalidCredentials
 	}
 
 	if err := comparePassword(user.PasswordHash, password); err != nil {
-		return ErrInvalidCredentials
+		return store.User{}, ErrInvalidCredentials
 	}
 
 	session := store.Session{
@@ -68,12 +70,12 @@ func (s *Service) LoginUser(w http.ResponseWriter, email, password string) error
 	}
 
 	if err := s.store.CreateSession(session); err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
+		return store.User{}, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	// Re-fetch to get the generated session ID
 	s.setSessionCookie(w, session.SessionID, session.ExpiresAt)
-	return nil
+	return user, nil
 }
 
 // Logout deletes the session from the store and clears the cookie

@@ -305,7 +305,7 @@ export type LoginResponse = {
 };
 
 export async function login(body: LoginPayload): Promise<LoginResponse> {
-  const res = await doFetch(apiUrl("/api/login"), {
+  const res = await doFetch(apiUrl("/api/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -314,7 +314,7 @@ export async function login(body: LoginPayload): Promise<LoginResponse> {
 }
 
 export async function register(body: LoginPayload): Promise<void> {
-  const res = await doFetch(apiUrl("/api/register"), {
+  const res = await doFetch(apiUrl("/api/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

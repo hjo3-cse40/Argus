@@ -25,6 +25,7 @@ type Config struct {
 	API           APIConfig
 	Database      DatabaseConfig
 	Destinations  DestinationsConfig
+	JWTSecret     string
 	RSSHub        RSSHubConfig
 	DeliveryLimit int
 }
@@ -118,6 +119,7 @@ func Load() (*Config, error) {
 		Destinations: DestinationsConfig{
 			DiscordWebhookURL: getEnv("DISCORD_WEBHOOK_URL", ""),
 		},
+		JWTSecret: getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		RSSHub: RSSHubConfig{
 			BaseURL: getEnv("RSSHUB_BASE_URL", "http://localhost:1200"),
 		},

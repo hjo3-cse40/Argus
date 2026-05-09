@@ -53,6 +53,8 @@ var migrations = []string{
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 	)`,
 
+	// Remove duplicate platform rows before creating unique index (MIN/MAX not available for UUID)
+	`DELETE FROM platforms WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY name ORDER BY created_at, id::text) AS rn FROM platforms) dup WHERE rn > 1)`,
 	// Create unique index on platforms.name to prevent duplicate platform names
 	`CREATE UNIQUE INDEX IF NOT EXISTS idx_platforms_name ON platforms(name)`,
 
