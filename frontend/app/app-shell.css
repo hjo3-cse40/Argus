@@ -82,6 +82,23 @@ html.dark .app-stat-val {
   color: var(--ink);
 }
 
+html.dark .app-select {
+  background: #0f0f14;
+  color: var(--ink);
+  border-color: var(--amber);
+}
+
+html.dark .app-select option {
+  background: #0f0f14;
+  color: var(--ink);
+}
+
+html.dark .app-btn {
+  background: var(--amber);
+  color: #0a0a0f;
+  border-color: var(--amber);
+}
+
 .app-shell {
   font-family: "DM Mono", monospace;
   font-size: 14px;
