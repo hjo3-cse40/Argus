@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SunMedium, MoonStar } from "lucide-react";
 
-export default function ThemeToggle() {
-    const [dark, setDark] = useState(() => {
-        if (typeof window === "undefined") return false;
+type ThemeToggleProps = {
+    initialDark?: boolean;
+};
 
-        return localStorage.getItem("theme") === "dark";
-    });
+export default function ThemeToggle({
+    initialDark = false,
+}: ThemeToggleProps) {
+    const [dark, setDark] = useState(initialDark);
 
     function toggleTheme() {
         const next = !dark;
