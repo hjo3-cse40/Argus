@@ -578,14 +578,75 @@ html.dark .app-btn {
   padding-bottom: 0.5rem;
 }
 
+/* Dashboard delivery tiles: same footprint for youtube / reddit / x */
 .app-post-card {
-  min-width: 220px;
+  --app-post-card-w: 280px;
+  --app-post-card-max-h: 400px;
+  box-sizing: border-box;
+  width: var(--app-post-card-w);
+  max-width: min(var(--app-post-card-w), 100%);
+  max-height: var(--app-post-card-max-h);
+  min-height: 0;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  overflow: hidden;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.5);
   padding: 1rem;
   font-size: 0.85rem;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.app-post-card > p:first-of-type {
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  word-break: break-word;
+}
+
+.app-post-card > p.app-muted {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+}
+
+.app-post-card > .app-link-quiet {
+  margin-top: 0.25rem;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.app-post-card--youtube {
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+}
+
+.app-yt-thumb-link {
+  position: relative;
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+.app-yt-thumb-link:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.app-yt-thumb {
+  object-fit: cover;
 }
 
 .app-post-card:hover {

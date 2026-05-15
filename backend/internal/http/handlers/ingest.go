@@ -78,15 +78,6 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.MQ.Publish("raw_events", body); err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok":    false,
-			"error": "queue unavailable",
-		})
-		return
-	}
-
 	// Extract subsource_id from event metadata if present
 	var subsourceID *string
 	if sid, ok := ev.Metadata["subsource_id"].(string); ok && sid != "" {
@@ -94,7 +85,7 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If the event is tied to a known subsource/platform, evaluate keyword filters
-	// before enqueueing so blocked events can be reported immediately to the caller.
+	// before any side effects so blocked events are not published to the queue.
 	var deliveryUserID string
 	if subsourceID != nil {
 		if subsource, found := h.Store.GetSubsource(*subsourceID); found {
@@ -119,6 +110,8 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Queued row must exist before the message is on the queue; otherwise the worker
+	// can mark delivered before INSERT and the delivery stays stuck in "queued".
 	h.Store.AddQueued(store.Delivery{
 		EventID:     ev.EventID,
 		Source:      ev.Source,
@@ -127,6 +120,15 @@ func (h *IngestHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		SubsourceID: subsourceID,
 		UserID:      deliveryUserID,
 	})
+
+	if err := h.MQ.Publish("raw_events", body); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":    false,
+			"error": "queue unavailable",
+		})
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)

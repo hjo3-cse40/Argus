@@ -379,11 +379,6 @@ func processFeeds(client *http.Client, subsources []store.SubsourceWithPlatform,
 				continue
 			}
 
-			if err := mqClient.Publish("raw_events", body); err != nil {
-				log.Printf("[%s - %s] publish failed: %v", subsource.PlatformName, subsource.Name, err)
-				continue
-			}
-
 			// Same contract as POST /api/ingest: queued row must exist before the worker can
 			// mark the delivery delivered for the dashboard/API.
 			sid := subsource.ID
@@ -395,6 +390,11 @@ func processFeeds(client *http.Client, subsources []store.SubsourceWithPlatform,
 				SubsourceID: &sid,
 				UserID:      subsource.UserID,
 			})
+
+			if err := mqClient.Publish("raw_events", body); err != nil {
+				log.Printf("[%s - %s] publish failed: %v", subsource.PlatformName, subsource.Name, err)
+				continue
+			}
 
 			log.Printf("✓ [%s - %s] %s — %s", subsource.PlatformName, subsource.Name, feedTitle, item.Title)
 			seenIDs[subsource.ID][eventID] = true

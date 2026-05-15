@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { AppNav } from "@/components/AppNav";
 import { AppTopNav } from "@/components/AppTopNav";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -16,6 +17,7 @@ import {
   type FilterCombineMode,
   type Platform,
 } from "@/lib/api";
+import { extractYouTubeVideoId, youtubeThumbnailUrl } from "@/lib/youtubeThumbnail";
 import "../app-shell.css";
 
 type DashboardPost = {
@@ -47,6 +49,7 @@ function PlatformSection({
   posts: DashboardPost[];
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const isYoutube = title === "youtube";
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -83,27 +86,49 @@ function PlatformSection({
         {posts.length === 0 ? (
           <p className="app-muted">No delivered notifications yet.</p>
         ) : (
-          posts.map((post) => (
-            <div key={post.id} className="app-post-card">
-              <p style={{ margin: 0 }}>{post.title}</p>
-              {post.updatedAt ? (
-                <p className="app-muted" style={{ margin: "0.4rem 0 0", fontSize: "0.72rem" }}>
-                  {formatRelativeTime(post.updatedAt)}
-                </p>
-              ) : null}
-              {post.url ? (
-                <a
-                  href={post.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="app-link-quiet"
-                  style={{ marginTop: "0.5rem", alignSelf: "flex-start" }}
-                >
-                  Open
-                </a>
-              ) : null}
-            </div>
-          ))
+          posts.map((post) => {
+            const ytId =
+              isYoutube && post.url ? extractYouTubeVideoId(post.url) : null;
+            const thumbSrc = ytId ? youtubeThumbnailUrl(ytId) : null;
+            return (
+              <div
+                key={post.id}
+                className={`app-post-card${isYoutube ? " app-post-card--youtube" : ""}`}
+              >
+                {thumbSrc && post.url ? (
+                  <a
+                    href={post.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-yt-thumb-link"
+                    aria-label={`Video thumbnail: ${post.title}`}
+                  >
+                    <Image
+                      src={thumbSrc}
+                      alt=""
+                      fill
+                      className="app-yt-thumb"
+                      sizes="280px"
+                    />
+                  </a>
+                ) : null}
+                <p>{post.title}</p>
+                {post.updatedAt ? (
+                  <p className="app-muted">{formatRelativeTime(post.updatedAt)}</p>
+                ) : null}
+                {post.url ? (
+                  <a
+                    href={post.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-link-quiet"
+                  >
+                    Open
+                  </a>
+                ) : null}
+              </div>
+            );
+          })
         )}
       </div>
     </div>
