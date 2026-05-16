@@ -449,3 +449,45 @@ func TestDeliveriesHandler_List_FilterBySubsource(t *testing.T) {
 		t.Errorf("Expected 2 deliveries for sub-1, got %d", len(deliveries))
 	}
 }
+
+func TestDeliveriesHandler_List_SortByTitle(t *testing.T) {
+	st := newTestStore()
+	sub := "s"
+	for _, e := range []struct {
+		id    string
+		title string
+	}{
+		{"a", "Zebra"},
+		{"b", "Alpha"},
+		{"c", "Mike"},
+	} {
+		st.AddQueued(store.Delivery{
+			EventID:     e.id,
+			Source:      "youtube",
+			Title:       e.title,
+			SubsourceID: &sub,
+			UserID:      deliveriesHandlerTestUserID,
+		})
+		_ = st.MarkDelivered(e.id)
+	}
+	handler := NewDeliveriesHandler(st)
+
+	req := deliveriesReqWithUser(httptest.NewRequest(
+		"GET",
+		"/deliveries?status=delivered&sort=title&order=asc&limit=10",
+		nil,
+	))
+	w := httptest.NewRecorder()
+	handler.List(w, req)
+
+	var deliveries []store.Delivery
+	if err := json.NewDecoder(w.Body).Decode(&deliveries); err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+	if len(deliveries) != 3 {
+		t.Fatalf("Expected 3 delivered, got %d", len(deliveries))
+	}
+	if deliveries[0].Title != "Alpha" || deliveries[1].Title != "Mike" || deliveries[2].Title != "Zebra" {
+		t.Fatalf("Unexpected title order: %#v %#v %#v", deliveries[0].Title, deliveries[1].Title, deliveries[2].Title)
+	}
+}

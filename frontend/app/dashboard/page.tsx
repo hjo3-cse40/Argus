@@ -1,22 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { AppNav } from "@/components/AppNav";
 import { AppTopNav } from "@/components/AppTopNav";
 import { RequireAuth } from "@/components/RequireAuth";
+import { fetchDeliveries, fetchPlatforms, type Delivery } from "@/lib/api";
 import {
-  createFilter,
-  deleteFilter,
-  fetchDeliveries,
-  fetchFilters,
-  fetchPlatforms,
-  updatePlatform,
-  type Delivery,
-  type DestinationFilter,
-  type FilterCombineMode,
-  type Platform,
-} from "@/lib/api";
+  type DashboardSortPreset,
+  sortDashboardPosts,
+} from "@/lib/notificationSort";
+import { subsourceDisplayLine } from "@/lib/subsourceDisplay";
 import { extractYouTubeVideoId, youtubeThumbnailUrl } from "@/lib/youtubeThumbnail";
 import "../app-shell.css";
 
@@ -25,6 +19,8 @@ type DashboardPost = {
   title: string;
   url?: string;
   updatedAt?: string;
+  subsourceName?: string;
+  subsourceIdentifier?: string;
 };
 
 function formatRelativeTime(iso?: string): string {
@@ -57,6 +53,29 @@ function PlatformSection({
       left: dir === "left" ? -300 : 300,
       behavior: "smooth",
     });
+  };
+
+  const titleBlock = (post: DashboardPost) => {
+    const subLine = subsourceDisplayLine(post.subsourceName, post.subsourceIdentifier);
+    const inner =
+      post.url ? (
+        <a
+          href={post.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="app-post-title-link"
+        >
+          {post.title}
+        </a>
+      ) : (
+        <span>{post.title}</span>
+      );
+    return (
+      <>
+        <p style={{ margin: 0 }}>{inner}</p>
+        {subLine ? <p className="app-subsource-line">{subLine}</p> : null}
+      </>
+    );
   };
 
   return (
@@ -112,7 +131,7 @@ function PlatformSection({
                     />
                   </a>
                 ) : null}
-                <p>{post.title}</p>
+                {titleBlock(post)}
                 {post.updatedAt ? (
                   <p className="app-muted">{formatRelativeTime(post.updatedAt)}</p>
                 ) : null}
@@ -136,160 +155,38 @@ function PlatformSection({
 }
 
 export default function Dashboard() {
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
-  const [platformsLoading, setPlatformsLoading] = useState(true);
-  const [platformsError, setPlatformsError] = useState<string | null>(null);
-
-  const [selectedPlatformId, setSelectedPlatformId] = useState("");
-
-  const [destinationFilters, setDestinationFilters] = useState<DestinationFilter[]>([]);
-  const [filtersLoading, setFiltersLoading] = useState(false);
-  const [filtersError, setFiltersError] = useState<string | null>(null);
-
-  const [includeInput, setIncludeInput] = useState("");
-  const [excludeInput, setExcludeInput] = useState("");
-  const [actionError, setActionError] = useState<string | null>(null);
   const [deliveryGroups, setDeliveryGroups] = useState<{
     youtube: DashboardPost[];
     reddit: DashboardPost[];
     x: DashboardPost[];
   }>({ youtube: [], reddit: [], x: [] });
+  const [dashboardSort, setDashboardSort] = useState<DashboardSortPreset>("updated_desc");
   const [deliveriesLoading, setDeliveriesLoading] = useState(true);
   const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
 
-  const reloadFilters = useCallback(async (platformId: string) => {
-    if (!platformId) {
-      setDestinationFilters([]);
-      return;
-    }
-    setFiltersLoading(true);
-    setFiltersError(null);
-    try {
-      const list = await fetchFilters(platformId);
-      setDestinationFilters(list);
-    } catch (e) {
-      setDestinationFilters([]);
-      setFiltersError(e instanceof Error ? e.message : "Failed to load filters");
-    } finally {
-      setFiltersLoading(false);
-    }
-  }, []);
+  const [platformCount, setPlatformCount] = useState<number | null>(null);
+  const [platformsError, setPlatformsError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setPlatformsLoading(true);
-      setPlatformsError(null);
       try {
         const list = await fetchPlatforms();
-        if (cancelled) return;
-        setPlatforms(list);
-        setSelectedPlatformId((prev) => prev || list[0]?.id || "");
+        if (!cancelled) {
+          setPlatformCount(list.length);
+          setPlatformsError(null);
+        }
       } catch (e) {
         if (!cancelled) {
-          setPlatforms([]);
-          setPlatformsError(
-            e instanceof Error ? e.message : "Failed to load platforms"
-          );
+          setPlatformCount(null);
+          setPlatformsError(e instanceof Error ? e.message : "Failed to load platforms");
         }
-      } finally {
-        if (!cancelled) setPlatformsLoading(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!selectedPlatformId) {
-      setDestinationFilters([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setFiltersLoading(true);
-      setFiltersError(null);
-      try {
-        const list = await fetchFilters(selectedPlatformId);
-        if (!cancelled) setDestinationFilters(list);
-      } catch (e) {
-        if (!cancelled) {
-          setDestinationFilters([]);
-          setFiltersError(
-            e instanceof Error ? e.message : "Failed to load filters"
-          );
-        }
-      } finally {
-        if (!cancelled) setFiltersLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedPlatformId]);
-
-  const includes = destinationFilters.filter((f) => f.filter_type === "keyword_include");
-  const excludes = destinationFilters.filter((f) => f.filter_type === "keyword_exclude");
-
-  const selectedPlatform = platforms.find((p) => p.id === selectedPlatformId);
-
-  const savePlatformCombine = async (patch: {
-    filter_include_combine?: FilterCombineMode;
-    filter_exclude_combine?: FilterCombineMode;
-  }) => {
-    if (!selectedPlatform) return;
-    setActionError(null);
-    try {
-      const updated = await updatePlatform(selectedPlatform.id, {
-        discord_webhook: selectedPlatform.discord_webhook,
-        filter_include_combine:
-          patch.filter_include_combine ?? selectedPlatform.filter_include_combine ?? "any",
-        filter_exclude_combine:
-          patch.filter_exclude_combine ?? selectedPlatform.filter_exclude_combine ?? "any",
-      });
-      setPlatforms((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not update filter combine mode");
-    }
-  };
-
-  const addInclude = async () => {
-    const pattern = includeInput.trim();
-    if (!pattern || !selectedPlatformId) return;
-    setActionError(null);
-    try {
-      await createFilter(selectedPlatformId, "keyword_include", pattern);
-      setIncludeInput("");
-      await reloadFilters(selectedPlatformId);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not add include filter");
-    }
-  };
-
-  const addExclude = async () => {
-    const pattern = excludeInput.trim();
-    if (!pattern || !selectedPlatformId) return;
-    setActionError(null);
-    try {
-      await createFilter(selectedPlatformId, "keyword_exclude", pattern);
-      setExcludeInput("");
-      await reloadFilters(selectedPlatformId);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not add exclude filter");
-    }
-  };
-
-  const removeFilterRow = async (id: string) => {
-    setActionError(null);
-    try {
-      await deleteFilter(id);
-      if (selectedPlatformId) await reloadFilters(selectedPlatformId);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not delete filter");
-    }
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -321,6 +218,8 @@ export default function Dashboard() {
             title: d.title || "(untitled)",
             url: d.url,
             updatedAt: d.updated_at,
+            subsourceName: d.subsource_name,
+            subsourceIdentifier: d.subsource_identifier,
           });
         }
         if (!cancelled) setDeliveryGroups(next);
@@ -336,7 +235,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [platforms]);
+  }, []);
 
   useEffect(() => {
     const es = new EventSource("/api/deliveries/stream");
@@ -354,6 +253,8 @@ export default function Dashboard() {
               title: incoming.title || "(untitled)",
               url: incoming.url,
               updatedAt: incoming.updated_at,
+              subsourceName: incoming.subsource_name,
+              subsourceIdentifier: incoming.subsource_identifier,
             },
             ...current,
           ].slice(0, 15);
@@ -369,7 +270,18 @@ export default function Dashboard() {
   const deliveredTotal =
     deliveryGroups.youtube.length + deliveryGroups.reddit.length + deliveryGroups.x.length;
 
-  const noPlatforms = !platformsLoading && platforms.length === 0 && !platformsError;
+  const sortedYoutube = useMemo(
+    () => sortDashboardPosts(deliveryGroups.youtube, dashboardSort),
+    [deliveryGroups.youtube, dashboardSort]
+  );
+  const sortedReddit = useMemo(
+    () => sortDashboardPosts(deliveryGroups.reddit, dashboardSort),
+    [deliveryGroups.reddit, dashboardSort]
+  );
+  const sortedX = useMemo(
+    () => sortDashboardPosts(deliveryGroups.x, dashboardSort),
+    [deliveryGroups.x, dashboardSort]
+  );
 
   return (
     <RequireAuth>
@@ -378,191 +290,24 @@ export default function Dashboard() {
       <div className="app-body">
         <aside className="app-sidebar">
           <AppNav />
-
-          <div id="keyword-filters" className="app-filters-panel">
-            <h2>Filters</h2>
-            <p className="app-filters-help">
-              Per platform. Choose whether multiple keywords use <strong>any</strong> (OR) or{" "}
-              <strong>all</strong> (AND). Excludes are checked first.
-            </p>
-
-            {platformsError && <p className="app-error">{platformsError}</p>}
-            {actionError && <p className="app-error">{actionError}</p>}
-
-            {platformsLoading ? (
-              <p className="app-muted">Loading platforms…</p>
-            ) : noPlatforms ? (
-              <p className="app-muted">
-                No platforms yet. Add one on the Platforms page, then refresh.
-              </p>
-            ) : (
-              <>
-                <label className="app-label" htmlFor="filter-platform">
-                  Platform
-                </label>
-                <select
-                  id="filter-platform"
-                  value={selectedPlatformId}
-                  onChange={(e) => setSelectedPlatformId(e.target.value)}
-                  className="app-select"
-                >
-                  {platforms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.id.slice(0, 8)}…)
-                    </option>
-                  ))}
-                </select>
-
-                {selectedPlatform ? (
-                  <div className="app-filter-block" style={{ marginTop: "0.75rem" }}>
-                    <label className="app-label" htmlFor="filter-include-combine">
-                      Include keywords match
-                    </label>
-                    <select
-                      id="filter-include-combine"
-                      value={selectedPlatform.filter_include_combine ?? "any"}
-                      onChange={(e) =>
-                        void savePlatformCombine({
-                          filter_include_combine: e.target.value as FilterCombineMode,
-                        })
-                      }
-                      className="app-select"
-                    >
-                      <option value="any">Any keyword (OR)</option>
-                      <option value="all">All keywords (AND)</option>
-                    </select>
-                    <label
-                      className="app-label"
-                      htmlFor="filter-exclude-combine"
-                      style={{ marginTop: "0.65rem" }}
-                    >
-                      Exclude keywords match
-                    </label>
-                    <select
-                      id="filter-exclude-combine"
-                      value={selectedPlatform.filter_exclude_combine ?? "any"}
-                      onChange={(e) =>
-                        void savePlatformCombine({
-                          filter_exclude_combine: e.target.value as FilterCombineMode,
-                        })
-                      }
-                      className="app-select"
-                    >
-                      <option value="any">Any keyword blocks (OR)</option>
-                      <option value="all">All keywords must match to block (AND)</option>
-                    </select>
-                  </div>
-                ) : null}
-
-                {filtersLoading ? (
-                  <p className="app-muted" style={{ marginTop: "1rem" }}>
-                    Loading filters…
-                  </p>
-                ) : filtersError ? (
-                  <p className="app-error" style={{ marginTop: "1rem" }}>
-                    {filtersError}
-                  </p>
-                ) : (
-                  <div className="app-filter-block">
-                    <div className="app-filter-block">
-                      <p className="app-label">Include</p>
-                      <div className="app-form-row">
-                        <input
-                          value={includeInput}
-                          onChange={(e) => setIncludeInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              void addInclude();
-                            }
-                          }}
-                          disabled={!selectedPlatformId}
-                          placeholder="Add keyword…"
-                          className="app-input"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => void addInclude()}
-                          disabled={!selectedPlatformId}
-                          className="app-btn app-btn-amber app-btn-icon"
-                          aria-label="Add include"
-                        >
-                          <span className="app-btn-label">+</span>
-                        </button>
-                      </div>
-                      {includes.length === 0 ? (
-                        <p className="app-muted" style={{ marginTop: "0.35rem" }}>
-                          None yet
-                        </p>
-                      ) : (
-                        <div className="app-chip-row">
-                          {includes.map((f) => (
-                            <div key={f.id} className="app-chip">
-                              <span title={f.pattern}>{f.pattern}</span>
-                              <button
-                                type="button"
-                                onClick={() => void removeFilterRow(f.id)}
-                                aria-label={`Remove ${f.pattern}`}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="app-filter-block">
-                      <p className="app-label">Exclude</p>
-                      <div className="app-form-row">
-                        <input
-                          value={excludeInput}
-                          onChange={(e) => setExcludeInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              void addExclude();
-                            }
-                          }}
-                          disabled={!selectedPlatformId}
-                          placeholder="Add keyword…"
-                          className="app-input"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => void addExclude()}
-                          disabled={!selectedPlatformId}
-                          className="app-btn app-btn-amber app-btn-icon"
-                          aria-label="Add exclude"
-                        >
-                          <span className="app-btn-label">+</span>
-                        </button>
-                      </div>
-                      {excludes.length === 0 ? (
-                        <p className="app-muted" style={{ marginTop: "0.35rem" }}>
-                          None yet
-                        </p>
-                      ) : (
-                        <div className="app-chip-row">
-                          {excludes.map((f) => (
-                            <div key={f.id} className="app-chip">
-                              <span title={f.pattern}>{f.pattern}</span>
-                              <button
-                                type="button"
-                                onClick={() => void removeFilterRow(f.id)}
-                                aria-label={`Remove ${f.pattern}`}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+          <p className="app-sidebar-hint">
+            Tune keyword include/exclude rules on the <strong>Filters</strong> page.
+          </p>
+          <div className="app-sidebar-sort">
+            <label className="app-label" htmlFor="dashboard-sort">
+              Sort rows
+            </label>
+            <select
+              id="dashboard-sort"
+              className="app-select"
+              value={dashboardSort}
+              onChange={(e) => setDashboardSort(e.target.value as DashboardSortPreset)}
+            >
+              <option value="updated_desc">Time · Newest first</option>
+              <option value="updated_asc">Time · Oldest first</option>
+              <option value="title_asc">Title · A to Z</option>
+              <option value="title_desc">Title · Z to A</option>
+            </select>
           </div>
         </aside>
 
@@ -577,6 +322,8 @@ export default function Dashboard() {
             <p className="app-kicker">Welcome back</p>
           </div>
 
+          {platformsError ? <p className="app-error">{platformsError}</p> : null}
+
           <div className="app-stat-grid">
             <div className="app-stat">
               <span className="app-stat-val">{deliveredTotal}</span>
@@ -584,9 +331,9 @@ export default function Dashboard() {
             </div>
             <div className="app-stat">
               <span className="app-stat-val">
-                {selectedPlatformId ? destinationFilters.length : 0}
+                {platformCount === null ? "…" : platformCount}
               </span>
-              <div className="app-stat-label">Active filters</div>
+              <div className="app-stat-label">Platforms</div>
             </div>
             <div className="app-stat">
               <span className="app-stat-val">{deliveriesLoading ? "…" : "live"}</span>
@@ -594,9 +341,10 @@ export default function Dashboard() {
             </div>
           </div>
           {deliveriesError ? <p className="app-error">{deliveriesError}</p> : null}
-          <PlatformSection title="youtube" posts={deliveryGroups.youtube} />
-          <PlatformSection title="reddit" posts={deliveryGroups.reddit} />
-          <PlatformSection title="twitter" posts={deliveryGroups.x} />
+
+          <PlatformSection title="youtube" posts={sortedYoutube} />
+          <PlatformSection title="reddit" posts={sortedReddit} />
+          <PlatformSection title="twitter" posts={sortedX} />
         </main>
       </div>
     </div>

@@ -6,6 +6,11 @@ import { AppTopNav } from "@/components/AppTopNav";
 import { RequireAuth } from "@/components/RequireAuth";
 import { deriveSubsourceIdentifierFromUrl } from "@/lib/deriveSubsourceFromUrl";
 import {
+  pickDefaultPlatformId,
+  PlatformKindButtons,
+  PlatformNameButtons,
+} from "@/components/PlatformKindButtons";
+import {
   createPlatform,
   createSubsource,
   deletePlatform,
@@ -18,12 +23,6 @@ import {
   type Subsource,
 } from "@/lib/api";
 import "../app-shell.css";
-
-const PLATFORM_NAMES = [
-  { value: "youtube", label: "YouTube" },
-  { value: "reddit", label: "Reddit" },
-  { value: "x", label: "X (Twitter)" },
-] as const;
 
 export default function PlatformsPage() {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
@@ -95,7 +94,7 @@ export default function PlatformsPage() {
       return;
     }
     setSubsPlatformId((prev) =>
-      prev && platforms.some((p) => p.id === prev) ? prev : platforms[0].id
+      prev && platforms.some((p) => p.id === prev) ? prev : pickDefaultPlatformId(platforms)
     );
   }, [platforms]);
 
@@ -280,21 +279,10 @@ export default function PlatformsPage() {
             <h2 className="app-section-title">Add platform</h2>
             <form onSubmit={(e) => void onSubmit(e)} className="app-form-stack">
               <div>
-                <label className="app-label" htmlFor="platform-name">
+                <p className="app-label" style={{ marginBottom: "0.35rem" }}>
                   Name
-                </label>
-                <select
-                  id="platform-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="app-select"
-                >
-                  {PLATFORM_NAMES.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                </p>
+                <PlatformNameButtons value={name} onChange={setName} />
               </div>
               <div>
                 <label className="app-label" htmlFor="webhook-url">
@@ -386,22 +374,16 @@ export default function PlatformsPage() {
               <p className="app-muted">Add a platform first.</p>
             ) : (
               <>
-                <label className="app-label" htmlFor="subs-platform">
+                <p className="app-label" style={{ marginBottom: "0.35rem" }}>
                   Platform
-                </label>
-                <select
-                  id="subs-platform"
-                  value={subsPlatformId}
-                  onChange={(e) => setSubsPlatformId(e.target.value)}
-                  className="app-select"
-                  style={{ maxWidth: "28rem", marginBottom: "1rem" }}
-                >
-                  {platforms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.id.slice(0, 8)}…)
-                    </option>
-                  ))}
-                </select>
+                </p>
+                <PlatformKindButtons
+                  platforms={platforms}
+                  selectedPlatformId={subsPlatformId}
+                  onSelect={setSubsPlatformId}
+                  ariaLabel="Sub-channel platform"
+                />
+                <div style={{ marginBottom: "1rem" }} />
 
                 {subActionError && <p className="app-error">{subActionError}</p>}
 

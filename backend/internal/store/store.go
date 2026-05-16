@@ -17,17 +17,19 @@ const (
 )
 
 type Delivery struct {
-	EventID     string         `json:"event_id"`
-	Source      string         `json:"source"`
-	Title       string         `json:"title"`
-	URL         string         `json:"url"`
-	Status      DeliveryStatus `json:"status"`
-	SubsourceID *string        `json:"subsource_id,omitempty"`
-	UserID      string         `json:"user_id,omitempty"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	RetryCount  int            `json:"retry_count"`
-	LastError   string         `json:"last_error,omitempty"`
+	EventID               string         `json:"event_id"`
+	Source                string         `json:"source"`
+	Title                 string         `json:"title"`
+	URL                   string         `json:"url"`
+	Status                DeliveryStatus `json:"status"`
+	SubsourceID           *string        `json:"subsource_id,omitempty"`
+	SubsourceName         string         `json:"subsource_name,omitempty"`
+	SubsourceIdentifier   string         `json:"subsource_identifier,omitempty"`
+	UserID                string         `json:"user_id,omitempty"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+	RetryCount            int            `json:"retry_count"`
+	LastError             string         `json:"last_error,omitempty"`
 }
 
 type Source struct {

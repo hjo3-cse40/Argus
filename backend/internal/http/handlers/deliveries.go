@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,59 @@ type DeliveriesHandler struct {
 
 func NewDeliveriesHandler(st store.Store) *DeliveriesHandler {
 	return &DeliveriesHandler{Store: st}
+}
+
+// sortDeliveriesInPlace stable-sorts list by sort (created_at, updated_at, title, source)
+// and order (asc, desc). Invalid sort defaults to created_at. Missing/invalid order uses
+// desc for times and asc for title/source.
+func sortDeliveriesInPlace(list []store.Delivery, sortField, order string) {
+	if len(list) < 2 {
+		return
+	}
+	field := strings.ToLower(strings.TrimSpace(sortField))
+	switch field {
+	case "created_at", "updated_at", "title", "source":
+	default:
+		field = "created_at"
+	}
+	ord := strings.ToLower(strings.TrimSpace(order))
+	var asc bool
+	switch ord {
+	case "asc":
+		asc = true
+	case "desc":
+		asc = false
+	default:
+		asc = field == "title" || field == "source"
+	}
+
+	sort.SliceStable(list, func(i, j int) bool {
+		a, b := list[i], list[j]
+		switch field {
+		case "updated_at":
+			if asc {
+				return a.UpdatedAt.Before(b.UpdatedAt)
+			}
+			return a.UpdatedAt.After(b.UpdatedAt)
+		case "title":
+			ca, cb := strings.ToLower(a.Title), strings.ToLower(b.Title)
+			if asc {
+				return ca < cb
+			}
+			return ca > cb
+		case "source":
+			ca, cb := strings.ToLower(a.Source), strings.ToLower(b.Source)
+			if asc {
+				return ca < cb
+			}
+			return ca > cb
+		default: // created_at
+			if asc {
+				return a.CreatedAt.Before(b.CreatedAt)
+			}
+			return a.CreatedAt.After(b.CreatedAt)
+		}
+	})
 }
 
 func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +131,10 @@ func (h *DeliveriesHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Apply offset + limit when list is ordered by created_at DESC
+	sortField := r.URL.Query().Get("sort")
+	sortOrder := r.URL.Query().Get("order")
+	sortDeliveriesInPlace(deliveries, sortField, sortOrder)
+
 	if offset >= len(deliveries) {
 		deliveries = make([]store.Delivery, 0)
 	} else {

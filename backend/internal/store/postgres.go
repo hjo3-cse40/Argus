@@ -163,10 +163,12 @@ func (s *PostgresStore) GetDelivery(eventID string) (Delivery, bool) {
 	var d Delivery
 	var subsourceID, uid sql.NullString
 	err := s.db.QueryRow(`
-		SELECT event_id, source, title, url, status, subsource_id, user_id, created_at, updated_at, retry_count, COALESCE(last_error, '')
-		FROM deliveries
-		WHERE event_id = $1
-	`, eventID).Scan(&d.EventID, &d.Source, &d.Title, &d.URL, &d.Status, &subsourceID, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError)
+		SELECT d.event_id, d.source, d.title, d.url, d.status, d.subsource_id, d.user_id, d.created_at, d.updated_at, d.retry_count, COALESCE(d.last_error, ''),
+			COALESCE(ss.name, ''), COALESCE(ss.identifier, '')
+		FROM deliveries d
+		LEFT JOIN subsources ss ON d.subsource_id = ss.id
+		WHERE d.event_id = $1
+	`, eventID).Scan(&d.EventID, &d.Source, &d.Title, &d.URL, &d.Status, &subsourceID, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError, &d.SubsourceName, &d.SubsourceIdentifier)
 	if err == sql.ErrNoRows {
 		return Delivery{}, false
 	}
@@ -204,10 +206,12 @@ func (s *PostgresStore) MarkFailed(eventID string, retryCount int, lastErr strin
 // List returns deliveries for a user ordered by created_at descending, limited by the store's limit
 func (s *PostgresStore) List(userID string) []Delivery {
 	rows, err := s.db.Query(`
-		SELECT event_id, source, title, url, status, subsource_id, user_id, created_at, updated_at, retry_count, COALESCE(last_error, '')
-		FROM deliveries
-		WHERE user_id = $1
-		ORDER BY created_at DESC
+		SELECT d.event_id, d.source, d.title, d.url, d.status, d.subsource_id, d.user_id, d.created_at, d.updated_at, d.retry_count, COALESCE(d.last_error, ''),
+			COALESCE(s.name, ''), COALESCE(s.identifier, '')
+		FROM deliveries d
+		LEFT JOIN subsources s ON d.subsource_id = s.id
+		WHERE d.user_id = $1
+		ORDER BY d.created_at DESC
 		LIMIT $2
 	`, userID, s.limit)
 
@@ -222,7 +226,7 @@ func (s *PostgresStore) List(userID string) []Delivery {
 		var d Delivery
 		var subsourceID, uid sql.NullString
 		err := rows.Scan(&d.EventID, &d.Source, &d.Title, &d.URL, &d.Status,
-			&subsourceID, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError)
+			&subsourceID, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError, &d.SubsourceName, &d.SubsourceIdentifier)
 		if err != nil {
 			log.Printf("Failed to scan delivery: %v", err)
 			continue
@@ -248,7 +252,8 @@ func (s *PostgresStore) List(userID string) []Delivery {
 // ListDeliveriesBySubsource returns deliveries filtered by subsource_id and user
 func (s *PostgresStore) ListDeliveriesBySubsource(userID string, subsourceID string) []Delivery {
 	rows, err := s.db.Query(`
-		SELECT d.event_id, d.source, d.title, d.url, d.status, d.subsource_id, d.user_id, d.created_at, d.updated_at, d.retry_count, COALESCE(d.last_error, '')
+		SELECT d.event_id, d.source, d.title, d.url, d.status, d.subsource_id, d.user_id, d.created_at, d.updated_at, d.retry_count, COALESCE(d.last_error, ''),
+			COALESCE(s.name, ''), COALESCE(s.identifier, '')
 		FROM deliveries d
 		JOIN subsources s ON d.subsource_id = s.id
 		JOIN platforms p ON s.platform_id = p.id
@@ -268,7 +273,7 @@ func (s *PostgresStore) ListDeliveriesBySubsource(userID string, subsourceID str
 		var d Delivery
 		var subsourceIDVal, uid sql.NullString
 		err := rows.Scan(&d.EventID, &d.Source, &d.Title, &d.URL, &d.Status,
-			&subsourceIDVal, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError)
+			&subsourceIDVal, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError, &d.SubsourceName, &d.SubsourceIdentifier)
 		if err != nil {
 			log.Printf("Failed to scan delivery: %v", err)
 			continue
@@ -294,7 +299,8 @@ func (s *PostgresStore) ListDeliveriesBySubsource(userID string, subsourceID str
 // ListDeliveriesByPlatform returns deliveries filtered by platform_id via subsources JOIN
 func (s *PostgresStore) ListDeliveriesByPlatform(userID string, platformID string) []Delivery {
 	rows, err := s.db.Query(`
-		SELECT d.event_id, d.source, d.title, d.url, d.status, d.subsource_id, d.user_id, d.created_at, d.updated_at, d.retry_count, COALESCE(d.last_error, '')
+		SELECT d.event_id, d.source, d.title, d.url, d.status, d.subsource_id, d.user_id, d.created_at, d.updated_at, d.retry_count, COALESCE(d.last_error, ''),
+			COALESCE(s.name, ''), COALESCE(s.identifier, '')
 		FROM deliveries d
 		JOIN subsources s ON d.subsource_id = s.id
 		JOIN platforms p ON s.platform_id = p.id
@@ -314,7 +320,7 @@ func (s *PostgresStore) ListDeliveriesByPlatform(userID string, platformID strin
 		var d Delivery
 		var subsourceID, uid sql.NullString
 		err := rows.Scan(&d.EventID, &d.Source, &d.Title, &d.URL, &d.Status,
-			&subsourceID, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError)
+			&subsourceID, &uid, &d.CreatedAt, &d.UpdatedAt, &d.RetryCount, &d.LastError, &d.SubsourceName, &d.SubsourceIdentifier)
 		if err != nil {
 			log.Printf("Failed to scan delivery: %v", err)
 			continue

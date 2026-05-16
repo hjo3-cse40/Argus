@@ -45,6 +45,8 @@ export type Delivery = {
   url: string;
   status: DeliveryStatus;
   subsource_id?: string;
+  subsource_name?: string;
+  subsource_identifier?: string;
   created_at: string;
   updated_at: string;
   retry_count: number;
@@ -178,6 +180,9 @@ export type FetchDeliveriesOptions = {
   offset?: number;
   platformId?: string;
   subsourceId?: string;
+  /** created_at | updated_at | title | source */
+  sort?: string;
+  order?: "asc" | "desc";
 };
 
 export async function fetchDeliveries(
@@ -191,6 +196,8 @@ export async function fetchDeliveries(
   }
   if (options.platformId) params.set("platform_id", options.platformId);
   if (options.subsourceId) params.set("subsource_id", options.subsourceId);
+  if (options.sort?.trim()) params.set("sort", options.sort.trim());
+  if (options.order) params.set("order", options.order);
 
   const query = params.toString();
   const path = query ? `/api/deliveries?${query}` : "/api/deliveries";

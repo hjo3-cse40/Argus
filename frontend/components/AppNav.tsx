@@ -25,7 +25,7 @@ const links: { href: string; label: string; matchHash?: string }[] = [
   { href: "/notifications", label: "Notifications" },
   { href: "/dashboard", label: "Dashboard", matchHash: "" },
   { href: "/platforms", label: "Platforms" },
-  { href: "/dashboard#keyword-filters", label: "Filters", matchHash: "#keyword-filters" },
+  { href: "/filters", label: "Filters" },
 ];
 
 export function AppNav() {
