@@ -266,6 +266,17 @@ func constructRSSHubURL(baseURL, platformName, identifier string) string {
 	return fmt.Sprintf("%s/%s", baseURL, path)
 }
 
+// youtubeRSSHubFallback returns an RSSHub feed URL when the official youtube.com Atom feed fails
+// (common from Docker/datacenter IPs). Prefers /youtube/channel/UC… when a channel id is known.
+func youtubeRSSHubFallback(baseURL, identifier, resolvedChannelID string) string {
+	if resolvedChannelID != "" && youTubeChannelIDRe.MatchString(resolvedChannelID) {
+		if u := constructRSSHubURL(baseURL, "youtube", resolvedChannelID); u != "" {
+			return u
+		}
+	}
+	return feedURLForSubsource(baseURL, "youtube", identifier)
+}
+
 // fetchFeed performs GET with headers suited to the feed host (Reddit often rejects default Go user agents).
 func fetchFeed(client *http.Client, feedURL string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, feedURL, nil)
@@ -288,13 +299,18 @@ func processFeeds(client *http.Client, subsources []store.SubsourceWithPlatform,
 			continue
 		}
 
+		resolvedChannelID := ""
 		if subsource.PlatformName == "youtube" {
 			yid := strings.TrimSpace(subsource.Identifier)
-			if yid != "" && !youTubeChannelIDRe.MatchString(yid) {
+			if youTubeChannelIDRe.MatchString(yid) {
+				resolvedChannelID = yid
+				feedURL = youtube.FeedURL(yid)
+			} else if yid != "" {
 				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 				uc, err := youtube.ResolveChannelID(ctx, yid)
 				cancel()
 				if err == nil && uc != "" {
+					resolvedChannelID = uc
 					feedURL = youtube.FeedURL(uc)
 					log.Printf("[%s - %s] resolved YouTube channel id %s (official feed)", subsource.PlatformName, subsource.Name, uc)
 				}
@@ -307,6 +323,21 @@ func processFeeds(client *http.Client, subsources []store.SubsourceWithPlatform,
 		if err != nil {
 			log.Printf("[%s - %s] request failed: %v", subsource.PlatformName, subsource.Name, err)
 			continue
+		}
+
+		if resp.StatusCode != http.StatusOK && subsource.PlatformName == "youtube" {
+			fallback := youtubeRSSHubFallback(baseURL, subsource.Identifier, resolvedChannelID)
+			if fallback != "" && fallback != feedURL {
+				_ = resp.Body.Close()
+				log.Printf("[%s - %s] official feed %s; trying RSSHub: %s",
+					subsource.PlatformName, subsource.Name, resp.Status, fallback)
+				feedURL = fallback
+				resp, err = fetchFeed(client, feedURL)
+				if err != nil {
+					log.Printf("[%s - %s] RSSHub request failed: %v", subsource.PlatformName, subsource.Name, err)
+					continue
+				}
+			}
 		}
 
 		if resp.StatusCode != http.StatusOK {

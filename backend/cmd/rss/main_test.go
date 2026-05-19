@@ -105,6 +105,21 @@ func TestConstructRSSHubURL_YouTube_UserHandle(t *testing.T) {
 	}
 }
 
+func TestYoutubeRSSHubFallback(t *testing.T) {
+	base := "http://rsshub:1200"
+	ch := "UC" + strings.Repeat("a", 22)
+	got := youtubeRSSHubFallback(base, "HisWattson", ch)
+	want := base + "/youtube/channel/" + ch
+	if got != want {
+		t.Errorf("with UC id: want %q, got %q", want, got)
+	}
+	got = youtubeRSSHubFallback(base, "HisWattson", "")
+	want = base + "/youtube/user/@HisWattson"
+	if got != want {
+		t.Errorf("handle only: want %q, got %q", want, got)
+	}
+}
+
 func TestFeedURLForSubsource_YouTube(t *testing.T) {
 	base := "http://rsshub:1200"
 	ch := "UC" + strings.Repeat("a", 22)
