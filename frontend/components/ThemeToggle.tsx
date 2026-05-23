@@ -15,16 +15,10 @@ export default function ThemeToggle({
     function toggleTheme() {
         const next = !dark;
         setDark(next);
-
-        if (next) {
-            document.documentElement.classList.add("dark");
-            localStorage.setItem("theme", "dark");
-            document.cookie = "theme=dark; path=/; max-age=31536000";
-        } else {
-            document.documentElement.classList.remove("dark");
-            localStorage.setItem("theme", "light");
-            document.cookie = "theme=light; path=/; max-age=31536000";
-        }
+        document.documentElement.classList.toggle("dark", next);
+        localStorage.setItem("theme", next ? "dark" : "light");
+        document.cookie = `theme=${next ? "dark" : "light"
+            }; path=/; max-age=31536000`;
     }
 
     return (
