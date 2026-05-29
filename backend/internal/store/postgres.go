@@ -684,6 +684,8 @@ func generateSubsourceURL(platformName, identifier string) string {
 		return fmt.Sprintf("https://reddit.com/r/%s", identifier)
 	case "x":
 		return fmt.Sprintf("https://x.com/%s", identifier)
+	case "other":
+		return identifier
 	default:
 		return ""
 	}

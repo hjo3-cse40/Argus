@@ -136,6 +136,10 @@ var migrations = []string{
 
 	`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL`,
 	`CREATE INDEX IF NOT EXISTS idx_deliveries_user_id ON deliveries(user_id)`,
+
+	// Add 'other' to allowed platform names
+	`ALTER TABLE platforms DROP CONSTRAINT IF EXISTS platforms_name_check`,
+	`ALTER TABLE platforms ADD CONSTRAINT platforms_name_check CHECK (name IN ('youtube', 'reddit', 'x', 'other'))`,
 }
 
 // MigrateFlatToHierarchical migrates data from the flat sources table to hierarchical platforms and subsources tables.

@@ -38,16 +38,17 @@ type PlatformResponse struct {
 func (r *CreatePlatformRequest) Validate() *ValidationError {
 	var details []string
 
-	// Validate name - must be one of (youtube, reddit, x)
+	// Validate name - must be one of (youtube, reddit, x, other)
 	allowedNames := map[string]bool{
 		"youtube": true,
 		"reddit":  true,
 		"x":       true,
+		"other":   true,
 	}
 	if strings.TrimSpace(r.Name) == "" {
 		details = append(details, "name is required")
 	} else if !allowedNames[r.Name] {
-		details = append(details, "name must be one of: youtube, reddit, x")
+		details = append(details, "name must be one of: youtube, reddit, x, other")
 	}
 
 	// Validate discord_webhook only when provided.

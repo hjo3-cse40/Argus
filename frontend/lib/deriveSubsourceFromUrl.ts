@@ -75,8 +75,12 @@ function deriveX(url: URL): DeriveResult {
   return { ok: true, identifier: first.replace(/^@/, "") };
 }
 
+function deriveOther(url: URL): DeriveResult {
+  return { ok: true, identifier: url.href };
+}
+
 /**
- * @param platformName lowercase platform name from API: `youtube` | `reddit` | `x`
+ * @param platformName lowercase platform name from API: `youtube` | `reddit` | `x` | `other`
  */
 export function deriveSubsourceIdentifierFromUrl(
   platformName: string,
@@ -94,6 +98,8 @@ export function deriveSubsourceIdentifierFromUrl(
       return deriveReddit(url);
     case "x":
       return deriveX(url);
+    case "other":
+      return deriveOther(url);
     default:
       return { ok: false, error: `Unknown platform: ${platformName}` };
   }
