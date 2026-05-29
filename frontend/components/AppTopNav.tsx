@@ -32,13 +32,10 @@ export function AppTopNav() {
 
   return (
     <nav className="app-topnav" aria-label="Primary">
-      <Link href="/landing" className="app-topnav-logo">
+      <Link href={user ? "/dashboard" : "/landing"} className="app-topnav-logo">
         Arg<span>u</span>s
       </Link>
       <div className="app-topnav-center">
-        <Link href="/landing" className="app-topnav-link">
-          Home
-        </Link>
         <Link href="/dashboard" className="app-topnav-link">
           Dashboard
         </Link>

@@ -272,7 +272,9 @@ export default function PlatformsPage() {
           </h1>
           <p className="app-page-sub">
             Names must be <code className="app-code">youtube</code>,{" "}
-            <code className="app-code">reddit</code>, or <code className="app-code">x</code>.
+            <code className="app-code">reddit</code>,{" "}
+            <code className="app-code">x</code>, or{" "}
+            <code className="app-code">other</code> (for any RSS/Atom feed).
           </p>
 
           <section className="app-section-block app-max-w-form">
@@ -365,9 +367,9 @@ export default function PlatformsPage() {
           <section className="app-max-w-wide">
             <h2 className="app-section-title">Sub-channels</h2>
             <p className="app-page-sub" style={{ marginBottom: "1.25rem" }}>
-              Paste the public URL for the channel, subreddit, or profile. We detect the feed id
-              automatically (same rules as the RSS worker: YouTube channel / @handle,{" "}
-              <code className="app-code">/r/name</code>, X/Twitter profile).
+              Paste the public URL for the channel, subreddit, profile, or RSS feed URL (for Other).{" "}
+              We detect the feed id automatically (same rules as the RSS worker: YouTube channel / @handle,{" "}
+              <code className="app-code">/r/name</code>, X/Twitter profile, or raw RSS feed URL for Other).
             </p>
 
             {platforms.length === 0 ? (
@@ -429,7 +431,7 @@ export default function PlatformsPage() {
                       type="url"
                       value={subUrl}
                       onChange={(e) => setSubUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/channel/… or /r/… or x.com/…"
+                      placeholder="https://www.youtube.com/channel/… or /r/… or x.com/… or RSS feed URL"
                       required
                       className="app-input"
                     />

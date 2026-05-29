@@ -1,16 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { login } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { login, fetchCurrentUser } from "@/lib/api";
 import Link from "next/link";
 import "./login.css";
 
 export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [bannerError, setBannerError] = useState("");
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await fetchCurrentUser();
+        if (!cancelled && user) {
+          router.replace("/dashboard");
+          return;
+        }
+      } catch { /* not authenticated */ }
+      if (!cancelled) setChecking(false);
+    })();
+    return () => { cancelled = true; };
+  }, [router]);
+
+  if (checking) {
+    return (
+      <div className="login-root" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "#888" }}>Checking your session…</p>
+      </div>
+    );
+  }
 
   const validate = () => {
     const newErrors: Record<string, string> = {};

@@ -237,6 +237,8 @@ func feedURLForSubsource(baseURL, platformName, identifier string) string {
 		}
 		base := strings.TrimRight(baseURL, "/")
 		return fmt.Sprintf("%s/youtube/user/@%s", base, handle)
+	case "other":
+		return strings.TrimSpace(identifier)
 	default:
 		return constructRSSHubURL(baseURL, platformName, identifier)
 	}

@@ -159,7 +159,8 @@ export default function Dashboard() {
     youtube: DashboardPost[];
     reddit: DashboardPost[];
     x: DashboardPost[];
-  }>({ youtube: [], reddit: [], x: [] });
+    other: DashboardPost[];
+  }>({ youtube: [], reddit: [], x: [], other: [] });
   const [dashboardSort, setDashboardSort] = useState<DashboardSortPreset>("updated_desc");
   const [deliveriesLoading, setDeliveriesLoading] = useState(true);
   const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
@@ -202,14 +203,16 @@ export default function Dashboard() {
           youtube: [],
           reddit: [],
           x: [],
+          other: [],
         } as {
           youtube: DashboardPost[];
           reddit: DashboardPost[];
           x: DashboardPost[];
+          other: DashboardPost[];
         };
         for (const d of delivered) {
           const source = d.source === "twitter" ? "x" : d.source;
-          if (source !== "youtube" && source !== "reddit" && source !== "x") continue;
+          if (source !== "youtube" && source !== "reddit" && source !== "x" && source !== "other") continue;
           const group = next[source];
           if (group.length >= 15) continue;
           if (group.some((item) => item.id === d.event_id)) continue;
@@ -226,7 +229,7 @@ export default function Dashboard() {
       } catch (e) {
         if (!cancelled) {
           setDeliveriesError(e instanceof Error ? e.message : "Failed to load notifications");
-          setDeliveryGroups({ youtube: [], reddit: [], x: [] });
+          setDeliveryGroups({ youtube: [], reddit: [], x: [], other: [] });
         }
       } finally {
         if (!cancelled) setDeliveriesLoading(false);
@@ -243,7 +246,7 @@ export default function Dashboard() {
       try {
         const incoming = JSON.parse((evt as MessageEvent).data) as Delivery;
         const source = incoming.source === "twitter" ? "x" : incoming.source;
-        if (source !== "youtube" && source !== "reddit" && source !== "x") return;
+        if (source !== "youtube" && source !== "reddit" && source !== "x" && source !== "other") return;
         setDeliveryGroups((prev) => {
           const current = prev[source];
           if (current.some((item) => item.id === incoming.event_id)) return prev;
@@ -268,7 +271,7 @@ export default function Dashboard() {
   }, []);
 
   const deliveredTotal =
-    deliveryGroups.youtube.length + deliveryGroups.reddit.length + deliveryGroups.x.length;
+    deliveryGroups.youtube.length + deliveryGroups.reddit.length + deliveryGroups.x.length + deliveryGroups.other.length;
 
   const sortedYoutube = useMemo(
     () => sortDashboardPosts(deliveryGroups.youtube, dashboardSort),
@@ -281,6 +284,10 @@ export default function Dashboard() {
   const sortedX = useMemo(
     () => sortDashboardPosts(deliveryGroups.x, dashboardSort),
     [deliveryGroups.x, dashboardSort]
+  );
+  const sortedOther = useMemo(
+    () => sortDashboardPosts(deliveryGroups.other, dashboardSort),
+    [deliveryGroups.other, dashboardSort]
   );
 
   return (
@@ -345,6 +352,7 @@ export default function Dashboard() {
           <PlatformSection title="youtube" posts={sortedYoutube} />
           <PlatformSection title="reddit" posts={sortedReddit} />
           <PlatformSection title="twitter" posts={sortedX} />
+          <PlatformSection title="other" posts={sortedOther} />
         </main>
       </div>
     </div>

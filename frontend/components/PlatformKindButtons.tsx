@@ -6,6 +6,7 @@ const KINDS = [
   { name: "youtube" as const, label: "YouTube" },
   { name: "reddit" as const, label: "Reddit" },
   { name: "x" as const, label: "X (Twitter)" },
+  { name: "other" as const, label: "Other" },
 ];
 
 export function pickDefaultPlatformId(platforms: Platform[]): string {
@@ -57,9 +58,10 @@ const CREATE_OPTIONS = [
   { value: "youtube", label: "YouTube" },
   { value: "reddit", label: "Reddit" },
   { value: "x", label: "X (Twitter)" },
+  { value: "other", label: "Other" },
 ] as const;
 
-/** Toggle `name` state when adding a new platform (youtube | reddit | x). */
+/** Toggle `name` state when adding a new platform (youtube | reddit | x | other). */
 export function PlatformNameButtons({
   value,
   onChange,

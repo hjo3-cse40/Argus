@@ -10,11 +10,7 @@ export default function Landing() {
         <Link href="/landing" className="nav-logo">
           Arg<span>u</span>s
         </Link>
-        <div className="nav-center">
-          <Link href="/landing" className="nav-link">Home</Link>
-          <Link href="/dashboard" className="nav-link">Dashboard</Link>
-          <Link href="/platforms" className="nav-link">Platforms</Link>
-        </div>
+
         <div className="nav-actions">
           <Link href="/login" className="nav-link">Log in</Link>
           <Link href="/register" className="nav-cta">Get started</Link>
