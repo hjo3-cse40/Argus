@@ -2,6 +2,8 @@
 
 Argus monitors RSS feeds from platforms such as YouTube, Reddit, X, and any other Atom or RSS feed, filters content by keywords, and delivers focused notifications to the in-app dashboard and an optional Discord webhook.
 
+**Try it live:** [https://argus.masondrake.dev](https://argus.masondrake.dev) - Deployed on Kubernetes. Accounts are separate from local setup
+
 ## Required software
 
 Before you start, install and verify:
