@@ -1,334 +1,255 @@
-Argus – Local Infrastructure (Sprint 1)
+# Argus
 
-## Prerequisites
+Argus monitors RSS feeds from platforms such as YouTube, Reddit, X, and any other Atom or RSS feed, filters content by keywords, and delivers focused notifications to the in-app dashboard and an optional Discord webhook.
 
-- Docker Desktop installed and running
-- Docker Compose available (`docker compose`)
-- Go 1.25+ installed
+## Required software
 
-## How to Run
+Before you start, install and verify:
 
-### 1) Start Infrastructure
+| Requirement | Notes |
+|-------------|--------|
+| **Docker Desktop** | Must be installed and **running** |
+| **Docker Compose** | Included with Docker Desktop (`docker compose version`) |
+| **Go 1.24+** | Only needed if you run the API/worker locally outside Docker |
 
-Run Docker Desktop on your computer, then:
+For the quick-start path below, **Docker is enough** — you do not need Go installed unless you choose local development.
+
+---
+
+## Quick start (recommended)
+
+### 0. Clone the Repository
+
+```bash
+git clone https://github.com/hjo3-cse40/Argus.git
+cd Argus
+```
+
+### 1. Start the stack
+
+From the project root:
 
 ```bash
 cd infra
-docker compose up -d
+docker compose up --build -d
 ```
 
-Check containers:
+This starts Postgres, RabbitMQ, RSSHub, the API, frontend, worker, and RSS poller.
+
+To check that containers are healthy:
+
+From `infra/` directory:
+
 ```bash
 docker compose ps
 ```
 
-**Verify RabbitMQ:**
-- URL: http://localhost:15672
-- Login: argus / argus
+### 2. Open the app
 
-**Verify Postgres:**
-```bash
-docker exec -it $(docker compose ps -q db) psql -U argus -d argus
-SELECT 1;
-\q
-```
+| Service | URL |
+|---------|-----|
+| **Web UI** | http://localhost:3000 |
+| **API** | http://localhost:8080 |
+| **RabbitMQ UI** | http://localhost:15672 (login: `argus` / `argus`) |
 
-**Stop:**
-```bash
-docker compose down
-```
+Verify the API:
 
-### 2) Configuration
-
-Configuration is via **environment variables**. The app treats a **`.env` file as the config file**: it loads `.env`, `infra/.env`, or `../infra/.env` automatically. See `docs/configuration-guide.md` for all options and env-based config (dev/stage/prod).
-
-**Quick start (development):**
-```bash
-# Defaults work for local development
-# Or explicitly set:
-export ENV=dev
-export PORT=8080
-export RABBITMQ_URL=amqp://argus:argus@localhost:5672/
-```
-
-### 3) Run the API
-
-From project root:
-```bash
-cd backend
-go run ./cmd/api
-```
-
-Default: http://localhost:8080 (set `PORT` env var to override). Requires RabbitMQ (e.g. infra up).
-
-**Health check:**
 ```bash
 curl http://localhost:8080/health
 ```
 
-### 4) Run the Worker
+Expected: `{"ok":true}`
+
+### 3. Create an account
+
+1. Open http://localhost:3000
+2. Click **Register** and create an account
+3. Log in — you'll land on the dashboard
+
+Auth uses **session cookies** (not JWT). The browser sends the cookie automatically on later requests.
+
+**Note:** Local accounts are separate from the deployed (Kubernetes) environment. Register again on the production URL if you use both.
+
+### 4. Add a source to monitor
+
+A **platform** is the destination type (YouTube, Reddit, X, or Other) plus optional Discord webhook and filters. A **sub-channel** is the specific feed to watch within a platform.
+
+1. Go to **Platforms**
+2. Create a platform (e.g. YouTube, Reddit, X, or Other) and optionally set a Discord webhook URL (see Discord Webhook section)
+3. Add a **sub-channel** (subsource):
+   - **YouTube:** channel URL or handle (e.g. `https://youtube.com/@handle`)
+   - **Reddit:** subreddit name (e.g. `r/golang` or `https://reddit.com/r/golang`)
+   - **X:** profile URL or username (e.g. `https://x.com/username` or `username`)
+   - **Other:** direct feed URL (e.g. `https://example.com/feed.xml`)
+   ```markdown 
+   > You can paste a URL for any platform; Argus derives the identifier automatically.
+4. Optionally add **keyword filters** (include/exclude) under **Filters**. With no filters, all new items are delivered. Excludes are checked first; multiple keywords can **match any** or **match all**.
+
+The RSS poller checks feeds **every 5 minutes** and only ingests items it hasn't seen before. Allow up to one cycle (5 minutes) after adding a source. The first poll may include a few recent existing posts.
+
+### 5. View notifications
+
+Open **Notifications** (full delivery history) or **Dashboard** (by Platform) in the UI to see delivered items. If you configured a Discord webhook on the platform, matching events are also posted to Discord.
+
+---
+
+## Stop the stack
+
+```bash
+cd infra
+docker compose down
+```
+
+To remove database data as well:
+
+```bash
+cd infra
+docker compose down -v
+```
+
+## Discord webhook (optional)
+
+1. In your Discord server: **Server Settings → Integrations → Webhooks**
+2. Click **New Webhook** and copy the URL
+3. Paste it when creating or editing a platform on the **Platforms** page
+
+---
+
+## Local development (optional)
+
+Use this if you're changing backend or frontend code and want hot reload instead of rebuilding Docker images.
+
+### Prerequisites
+
+- Go 1.24+
+- Node.js 22+ (for the Next.js frontend)
+- Docker Desktop running (for Postgres, RabbitMQ, RSSHub)
+
+### 1. Start infrastructure only
+
+If the full stack is already running, stop it first (`cd infra && docker compose down`), then start only the backing services:
+
+```bash
+cd infra
+docker compose up -d db rabbitmq rsshub
+```
+
+### 2. Run the API
+
+```bash
+cd backend
+go run ./cmd/api
+```
+
+API: http://localhost:8080
+
+### 3. Run the worker
 
 In a new terminal:
+
 ```bash
 cd backend
 go run ./cmd/worker
 ```
 
-Expected log:
-```
-Starting worker in dev environment
-worker listening on raw_events
+Optional — Discord delivery:
+
+```bash
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+go run ./cmd/worker
 ```
 
-### 5) Publish Test Events
+### 4. Run the RSS poller
 
-#### Option A: Using the API endpoint
+In another terminal:
+
+```bash
+cd backend
+go run ./cmd/rss
+```
+
+### 5. Run the frontend
+
+In another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend: http://localhost:3000 (proxies `/api` to the Go API)
+
+---
+
+## Configuration
+
+Configuration is via **environment variables**. Defaults work for local Docker Compose.
+
+Common variables:
+
+| Variable | Default (Compose) | Purpose |
+|----------|-------------------|---------|
+| `DB_HOST` | `db` / `localhost` | Postgres host |
+| `DB_PORT` | `5432` / `5433` | Postgres port (5433 on host) |
+| `RABBITMQ_URL` | `amqp://argus:argus@rabbitmq:5672/` | Message queue |
+| `RSSHUB_BASE_URL` | `http://rsshub:1200` | RSSHub for some feeds |
+| `DISCORD_WEBHOOK_URL` | — | Fallback Discord webhook when platform has none set |
+
+---
+
+## How it works
+
+```
+RSS Poller  →  RabbitMQ (raw_events)  →  Worker  →  Discord + in-app notifications
+     ↑                                        ↑
+  Subsources                             Keyword filters
+  (per channel/subreddit)                (per platform)
+```
+
+1. **Subsources** define what to watch (a YouTube channel, Reddit subreddit, etc.).
+2. The **RSS poller** fetches feeds every 5 minutes and deduplicates by URL.
+3. The **worker** applies keyword filters and delivers to Discord and the dashboard.
+4. **Platforms** group subsources and hold Discord webhook + filter settings.
+
+---
+
+## Useful commands
+
+**Publish a test event (API must be running):**
+
 ```bash
 curl -X POST http://localhost:8080/debug/publish
 ```
 
-Expected response:
-```json
-{ "ok": true, "event_id": "..." }
-```
+**List deliveries (requires login cookie):**
 
-#### Option B: Using the CLI tool (NEW)
 ```bash
-cd backend
-go run ./cmd/cli
-
-# With custom options:
-go run ./cmd/cli -source="my-source" -title="My Event" -url="https://example.com"
-
-# Publish multiple events:
-go run ./cmd/cli -count=5
-
-# See all options:
-go run ./cmd/cli -help
+curl -b cookies.txt http://localhost:8080/api/deliveries
 ```
 
-In RabbitMQ UI (raw_events queue), Ready should increase for each new event you publish.
+**Connect to Postgres:**
 
-### 6) End-to-End Test (Full Pipeline)
-
-1. Publish an event (using API or CLI)
-2. Watch worker logs - should show:
-   ```
-   RECEIVED raw message: {...}
-   RECEIVED event_id=...
-   marked delivered in API: status=200 OK
-   DELIVERED + ACKED
-   ```
-3. Check RabbitMQ UI - `raw_events` Ready count should go back to 0
-
-### 7) View Delivery Status
-```bash
-curl http://localhost:8080/deliveries
-```
-
-Expected output:
-```json
-[
-  {
-    "event_id": "...",
-    "status": "delivered",
-    "source": "synthetic",
-    "title": "hello from argus",
-    "url": "https://example.com"
-  }
-]
-```
-
-## Event Schema
-
-Events follow a standardized schema defined in `backend/internal/events/schema.go`:
-
-```go
-type Event struct {
-    EventID   string    `json:"event_id"`
-    Source     string    `json:"source"`
-    Title      string    `json:"title"`
-    URL        string    `json:"url"`
-    CreatedAt  time.Time `json:"created_at"`
-    Metadata   map[string]interface{} `json:"metadata,omitempty"`
-}
-```
-
-## Collector Team Features
-
-- ✅ Environment configuration (dev/stage/prod)
-- ✅ Formalized event schema
-- ✅ CLI tool for publishing events
-- ✅ Research document on data collection methods
-
-See `docs/` for:
-- `configuration-guide.md` - Detailed configuration documentation
-- `data-collection-research.md` - Research on data collection methods
-- `env.*.example` - Example environment files
-
-## Stop Everything
-```bash
-docker compose down
-```
-
-## Discord Webhook Delivery (Sprint 2)
-
-The worker supports delivering events to a configured Discord webhook using embed formatting.
-
-### Setup Discord Webhook
-
-1. In your discord server:
-  - Go to **Server Settings → Integrations → Webhooks**
-  - Click **New Webhook** for a channel
-  - Copy the generated webhook URL
-
-2. Set the environment variable before running worker.
-
-### MacOS / Linux (Terminal)
-```bash
-export DISCORD_WEBHOOK_URL="generated webhook url"
-```
-### Windows (Terminal)
-```bash
-$env:DISCORD_WEBHOOK_URL="generated webhook url"
-```
-
-### Run Worker
-
-In same terminal:
-```bash
-cd backend
-go run ./cmd/worker
-```
-
-When publishing events, worker will:
-1. consume the event from `raw_events`
-2. Render a discord embed
-3. POST to the configured webhook
-4. Mark the event delivered in the API
-5. ACK the message
-
-### Full End-to-End Test (Discord)
-
-1. Start infra:
 ```bash
 cd infra
-docker compose up -d
-```
-2. Run API:
-```bash
-cd backend
-go run ./cmd/api
-```
-3. Setup webhook + run worker (Both in New Terminal):
-```bash
-$env:DISCORD_WEBHOOK_URL="generated webhook url"
-or
-export DISCORD_WEBHOOK_URL="generated webhook url"
-go run ./cmd/worker
-```
-4. Publish event:
-```bash
-go run ./cmd/cli
-```
-5. Expected Results from worker:
-  ```
-  RECEIVED raw message: {...}
-  RECEIVED event_id=...
-  discord delivered event_id=...
-  marked delivered in API: status=200 OK
-  DELIVERED + ACKED
-  ```
-  
-## Authentication 
-
-The API now supports user registration, login, logout, and protected routes using session-based authentication with bcrypt password hashing.
-
-### 8) Test Auth Endpoints
-
-Make sure the API is running:
-```bash
-cd backend
-go run ./cmd/api
-```
-
-#### Register a new account
-```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "password": "password123"}'
-```
-
-Expected response:
-```json
-{ "message": "Account created successfully" }
-```
-
-#### Login
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email": "test@example.com", "password": "password123"}'
-```
-
-The `-c cookies.txt` flag saves the session cookie locally for subsequent requests.
-
-Expected response:
-```json
-{ "message": "Logged in successfully" }
-```
-
-#### Get current user (protected route)
-```bash
-curl -X GET http://localhost:8080/api/auth/me \
-  -b cookies.txt
-```
-
-Expected response:
-```json
-{
-  "id": "...",
-  "email": "test@example.com",
-  "created_at": "2024-01-01T00:00:00Z"
-}
-```
-
-#### Logout
-```bash
-curl -X POST http://localhost:8080/api/auth/logout \
-  -b cookies.txt
-```
-
-Expected response:
-```json
-{ "message": "Logged out successfully" }
-```
-
-### 9) Verify Auth Data in Database
-
-Connect to the database:
-```bash
 docker exec -it $(docker compose ps -q db) psql -U argus -d argus
 ```
 
-Check registered users:
-```sql
-SELECT id, email, created_at FROM users;
-```
+---
 
-Check active sessions:
-```sql
-SELECT session_id, user_id, created_at, expires_at FROM sessions;
-```
+## Deployment
 
-After logout, the session should be removed:
-```sql
-SELECT * FROM sessions;
--- Should return 0 rows
-```
+Production runs on Kubernetes (k3s + ArgoCD). See `k3s/` for manifests. Deployment details are maintained separately from this onboarding guide.
 
-Exit psql:
-```bash
-\q
+---
+
+## Project layout
+
+```
+Argus/
+├── backend/          Go API, worker, RSS poller
+├── frontend/         Next.js web UI
+├── infra/            Docker Compose for local dev
+├── k3s/              Kubernetes manifests
+└── static/           Legacy static assets
 ```
