@@ -29,9 +29,6 @@ COPY --from=builder /app/api .
 COPY --from=builder /app/worker .
 COPY --from=builder /app/rss .
 
-# Copy static files from project root
-COPY static ./static
-
 # Expose port
 EXPOSE 8080
 

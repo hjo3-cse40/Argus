@@ -29,7 +29,7 @@ export default function Landing() {
             </h1>
             <p className="hero-desc">
               Argus aggregates signals from YouTube, Reddit, and X — routing them to
-              Discord the moment they happen. One system. Full visibility.
+              your dashboard the moment they happen. One system. Full visibility.
             </p>
             <div className="hero-actions">
               <Link href="/register" className="btn-primary">
@@ -77,10 +77,10 @@ export default function Landing() {
           </div>
           <div className="feature">
             <div className="feature-num">02 / Route</div>
-            <h3>Discord Webhook Delivery</h3>
+            <h3>Dashboard Delivery</h3>
             <p>
-              Each platform routes to its own webhook. Events land in the right
-              channel, every time, with full status tracking.
+              Every event lands in your Argus dashboard with full status tracking.
+              No config, no webhooks — just instant visibility.
             </p>
           </div>
           <div className="feature">
@@ -110,7 +110,7 @@ export default function Landing() {
               <h3>Competitor watch</h3>
               <p>
                 Follow competitor activity in one dashboard and route critical
-                updates directly to your team&apos;s Discord channels.
+                updates directly to your team&apos;s dashboard.
               </p>
             </article>
             <article className="use-case-card">
@@ -169,21 +169,20 @@ export default function Landing() {
               </p>
             </details>
             <details className="faq-item">
-              <summary>How does Discord delivery work?</summary>
+              <summary>How does dashboard delivery work?</summary>
               <p>
-                Add your Discord webhook URL, choose which sources you want to
-                track, and Argus sends new updates to your channel automatically.
-                You can then check delivery history to confirm everything arrived.
+                Configure your sources and Argus automatically delivers
+                notifications to your dashboard. No webhook setup needed —
+                everything is ready the moment you add a source.
               </p>
             </details>
             <details className="faq-item">
               <summary>
-                Can I route different sources to different Discord channels?
+                Can I route different sources to different views?
               </summary>
               <p>
-                Yes. Different platform sources can be mapped to different
-                webhook destinations, so each channel receives only relevant
-                events.
+                Yes. Each source&#39;s notifications are clearly organized in
+                your dashboard so you can focus on what matters.
               </p>
             </details>
             <details className="faq-item">

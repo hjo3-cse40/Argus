@@ -44,68 +44,7 @@ func TestProperty_ContainerImageBuildCompleteness(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-// Property 2: Static Files Inclusion
-// Validates: Requirements 1.3
-// Test that API image contains all frontend static files
-func TestProperty_StaticFilesInclusion(t *testing.T) {
-	parameters := gopter.DefaultTestParameters()
-	parameters.MinSuccessfulTests = 100
-	properties := gopter.NewProperties(parameters)
-
-	properties.Property("API image contains all required static files", prop.ForAll(
-		func(staticFiles []string) bool {
-			// Required static files that must be in the API image
-			requiredFiles := []string{
-				"static/index.html",
-				"static/css/styles.css",
-				"static/js/app.js",
-			}
-
-			// Check if all required files are present
-			for _, required := range requiredFiles {
-				found := false
-				for _, file := range staticFiles {
-					if file == required {
-						found = true
-						break
-					}
-				}
-				if !found {
-					return false
-				}
-			}
-
-			return true
-		},
-		gen.SliceOf(gen.OneConstOf(
-			"static/index.html",
-			"static/css/styles.css",
-			"static/js/app.js",
-			"static/favicon.ico",
-		)).SuchThat(func(files []string) bool {
-			// Ensure we have at least the required files
-			hasIndex := false
-			hasCSS := false
-			hasJS := false
-			for _, f := range files {
-				if f == "static/index.html" {
-					hasIndex = true
-				}
-				if f == "static/css/styles.css" {
-					hasCSS = true
-				}
-				if f == "static/js/app.js" {
-					hasJS = true
-				}
-			}
-			return hasIndex && hasCSS && hasJS
-		}),
-	))
-
-	properties.TestingRun(t)
-}
-
-// Property 3: Image Tagging Uniqueness
+// Property 2: Image Tagging Uniqueness
 // Validates: Requirements 1.4
 // Test that images are tagged with unique commit SHA identifiers
 func TestProperty_ImageTaggingUniqueness(t *testing.T) {
