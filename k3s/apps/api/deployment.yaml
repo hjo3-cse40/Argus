@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/hjo3-cse40/argus-api:sha-c7089fe3ba3b0d7536d786ac495608b9047152b6
+          image: ghcr.io/hjo3-cse40/argus-api:sha-a7b3fb29bea6788c1e9b279fda4f0b227540311f
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
