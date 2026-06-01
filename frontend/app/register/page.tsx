@@ -121,7 +121,7 @@ export default function Register() {
           <div className="panel-sub">Everything in one place</div>
           <ul className="panel-checklist">
             <li>YouTube, Reddit &amp; X aggregation</li>
-            <li>Discord webhook delivery</li>
+            <li>Dashboard delivery</li>
             <li>Full notification history</li>
             <li>Hierarchical source management</li>
           </ul>
