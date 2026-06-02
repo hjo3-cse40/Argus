@@ -335,10 +335,10 @@ func TestDeliveriesHandler_List_Limit(t *testing.T) {
 	}
 }
 
-// Limit is capped at maxDeliveryLimit (100) even if client asks for more
-func TestDeliveriesHandler_List_LimitCappedAt100(t *testing.T) {
+// Limit is capped at maxDeliveryLimit (500) even if client asks for more
+func TestDeliveriesHandler_List_LimitCappedAt500(t *testing.T) {
 	st := newTestStore()
-	for i := 0; i < 150; i++ {
+	for i := 0; i < 600; i++ {
 		st.AddQueued(store.Delivery{
 			EventID: "evt-cap-" + string(rune(i+33)),
 			Source:  "test",
@@ -348,7 +348,7 @@ func TestDeliveriesHandler_List_LimitCappedAt100(t *testing.T) {
 	}
 	handler := NewDeliveriesHandler(st)
 
-	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries?limit=150", nil))
+	req := deliveriesReqWithUser(httptest.NewRequest("GET", "/deliveries?limit=600", nil))
 	w := httptest.NewRecorder()
 
 	handler.List(w, req)
@@ -357,8 +357,8 @@ func TestDeliveriesHandler_List_LimitCappedAt100(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&deliveries); err != nil {
 		t.Fatalf("Failed to decode: %v", err)
 	}
-	if len(deliveries) > 100 {
-		t.Errorf("Expected max 100 deliveries, got %d", len(deliveries))
+	if len(deliveries) != 500 {
+		t.Errorf("Expected 500 deliveries (capped), got %d", len(deliveries))
 	}
 }
 
