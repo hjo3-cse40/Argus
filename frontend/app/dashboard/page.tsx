@@ -23,6 +23,8 @@ type DashboardPost = {
   subsourceIdentifier?: string;
 };
 
+const DASHBOARD_DELIVERIES_LIMIT = 500;
+
 function formatRelativeTime(iso?: string): string {
   if (!iso) return "";
   const then = new Date(iso).getTime();
@@ -197,7 +199,9 @@ export default function Dashboard() {
       try {
         const delivered = await fetchDeliveries({
           status: "delivered",
-          limit: 100,
+          // Dashboard groups by source; if one source (e.g. "other") is high-volume,
+          // a small global limit can hide other sources entirely.
+          limit: DASHBOARD_DELIVERIES_LIMIT,
         });
         const next = {
           youtube: [],
@@ -328,6 +332,10 @@ export default function Dashboard() {
             </div>
             <p className="app-kicker">Welcome back</p>
           </div>
+
+          <p className="app-muted" style={{ marginTop: 0 }}>
+            dashboard deliveries limit: {DASHBOARD_DELIVERIES_LIMIT}
+          </p>
 
           {platformsError ? <p className="app-error">{platformsError}</p> : null}
 

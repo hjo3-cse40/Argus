@@ -13,7 +13,9 @@ import (
 
 //Default limit of last 50 notifications
 const defaultDeliveryLimit = 50
-const maxDeliveryLimit = 100
+// The dashboard groups by source; a small global limit can hide lower-volume sources
+// (e.g. YouTube/Reddit) when "other" is noisy.
+const maxDeliveryLimit = 500
 
 type DeliveriesHandler struct {
 	Store store.Store

@@ -20,6 +20,7 @@ services:
     environment:
       NODE_ENV: production
       CACHE_TYPE: memory
+      TWITTER_AUTH_TOKEN: 8d28e4753abd8bd96833be44e88a100a6a016a4d
     # Upstream RSSHub exposes /healthz; wget is often missing from the image (probe always fails).
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:1200/healthz"]
